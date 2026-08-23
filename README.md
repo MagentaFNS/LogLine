@@ -39,7 +39,6 @@
        style="border-radius: 30px; max-width: 45%;">
 </div>
 
-
 ## Быстрый старт
 
 Вот как запустить LogLine за пару минут:

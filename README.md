@@ -3,22 +3,18 @@
 
 <div align="center">
 
-<img src="https://readme-typing-svg.demolab.com?font=Fira+Code&weight=1000&size=120&pause=1000&color=FFFFFF&center=true&vCenter=true&width=1000&height=200&lines=LogLine" alt="LogLine" />
-
-<p><strong>Твой трекер разработчика. Превращает хаос кодинга в понятную картину прогресса.</strong></p>
+<img src="docs/assets/Svg/README_TITLE.svg" alt="Анимированный заголовок" width="2000" />
 
 <p>
   <a href="https://discord.gg/6bMMJZxyGS"><· Join the conversation ·></a>
 </p>
 
 <p>
-  <a href="LICENSE"><img alt="License: MIT" src="https://img.shields.io/badge/License-MIT-informational"></a>
-  <img alt="Status" src="https://img.shields.io/badge/Status-Active-brightgreen">
+  <a href="LICENSE"><img alt="License: MIT" src="https://img.shields.io/badge/License-MIT-white"></a>
+  <img alt="Status" src="https://img.shields.io/badge/Status-Active-white">
 </p>
 
 </div>
-
----
 
 ## О проекте
 
@@ -32,11 +28,21 @@
 - **Анализировать ошибки.** Понимать, на чём ты спотыкаешься чаще всего.
 - **Строить график роста.** Знать, сколько строк кода ты написал за месяц.
 
----
+## Вид
+
+<div align="center" style="display: flex; gap: 20px; justify-content: center; flex-wrap: wrap;">
+  <img src="docs/assets/Design/Design_LogLine_Desktop.png" 
+       alt="LogLine Design 1" 
+       style="border-radius: 30px; max-width: 45%;">
+  <img src="docs/assets/Design/Design_LogLine.png" 
+       alt="LogLine Design 2" 
+       style="border-radius: 30px; max-width: 45%;">
+</div>
+
 
 ## Быстрый старт
 
-Хочешь попробовать? Вот как запустить LogLine за пару минут:
+Вот как запустить LogLine за пару минут:
 
 1. **Клонируй репозиторий**  
    ```bash
@@ -49,15 +55,20 @@
 
 ## Установка LogLine
 <details> <summary><strong>macOS / Linux</strong></summary>
+<pre>
 cd LogLine
 python -m venv venv
 source venv/bin/activate
 pip install -r requirements.txt
-</details><details> <summary><strong>Windows (PowerShell)</strong></summary>
+</pre>
+</details>
+<details> <summary><strong>Windows (PowerShell)</strong></summary>
+<pre>
 cd LogLine
 python -m venv venv
 venv\Scripts\activate
 pip install -r requirements.txt
+</pre>
 </details>
 
 ## Как это работает
@@ -94,7 +105,7 @@ pip install -r requirements.txt
 **Авторское право (c) 2026 Magenta.**
 
 ## Контакты и сообщество
-**Discord — общайтесь в чате с командой и сообществом на Discord.**
+**Discord — общайтесь в чате с командой и сообществом на [Discord](https://discord.gg/48an2b7guA).**
 
 **GitHub** — следите за обновлениями и участвуйте в разработке через Issues и Pull Requests.
 

@@ -66,3 +66,21 @@ func Login(c *gin.Context) {
 
 	c.JSON(200, gin.H{"token": tokenString, "user": user})
 }
+
+// Создаем новый API: Обновление профиля (Настройки)
+func UpdateProfile(c *gin.Context) {
+	userID := c.GetUint("userID")
+	var input struct {
+		Username string `json:"username"`
+		Bio      string `json:"bio"`
+	}
+	c.ShouldBindJSON(&input)
+
+	var user models.User
+	database.DB.First(&user, userID)
+	user.Username = input.Username
+	user.Bio = input.Bio
+	database.DB.Save(&user)
+
+	c.JSON(200, user)
+}

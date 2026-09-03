@@ -1,48 +1,43 @@
 import { useEffect, useState } from 'react';
 import { useStore } from './store/useStore';
 import { LoginPage } from './pages/LoginPage';
+import { HomePage } from './pages/HomePages';
 import { NotesPage } from './pages/NotesPage';
 import { ChatPage } from './pages/ChatPage';
 import { AdminPage } from './pages/AdminPage';
 import { ProfilePage } from './pages/ProfilePage';
+import { JobsPage } from './pages/JobsPage';
+import { MatchesPage } from './pages/MatchesPage';
 import { Sidebar } from './components/Sidebar';
 import { Header } from './components/Header';
-import { Search, Bell } from 'lucide-react';
 
 function App() {
-  const { currentUser, token, fetchNotes } = useStore();
-  const [activeTab, setActiveTab] = useState('Заметки');
+  const { currentUser, token, fetchNotes, fetchNotifications } = useStore();
+  const [activeTab, setActiveTab] = useState('Главная');
 
   useEffect(() => {
     if (token) {
       fetchNotes();
+      fetchNotifications();
     }
   }, [token]);
 
-  if (!currentUser) {
-    return <LoginPage />;
-  }
+  if (!currentUser) return <LoginPage />;
 
   return (
-    <div className="flex h-screen overflow-hidden bg-logline-light">
+    <div className="flex h-screen overflow-hidden bg-[#f4f4f4]">
       <Sidebar activeTab={activeTab} setActiveTab={setActiveTab} />
-
       <div className="flex-1 flex flex-col overflow-hidden">
         <Header activeTab={activeTab} />
-
-        {/* Плавная смена контента */}
         <main className="flex-1 overflow-hidden">
           <div key={activeTab} className="h-full fade-in-up">
+            {activeTab === 'Главная' && <HomePage />}
             {activeTab === 'Заметки' && <NotesPage />}
             {activeTab === 'Чаты' && <ChatPage />}
-            {activeTab === 'Админ-панель' && <AdminPage />}
+            {activeTab === 'Знакомства' && <MatchesPage />}
+            {activeTab === 'Работы' && <JobsPage />}
             {activeTab === 'Профиль' && <ProfilePage />}
-            {activeTab === 'Главная' && (
-              <div className="p-8">
-                <h1 className="text-3xl font-bold mb-4">Добро пожаловать, {currentUser.username}!</h1>
-                <p className="text-gray-500">Выберите раздел в меню слева.</p>
-              </div>
-            )}
+            {activeTab === 'Админ-панель' && <AdminPage />}
           </div>
         </main>
       </div>

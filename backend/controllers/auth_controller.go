@@ -67,7 +67,7 @@ func Login(c *gin.Context) {
 	c.JSON(200, gin.H{"token": tokenString, "user": user})
 }
 
-// Создаем новый API: Обновление профиля (Настройки)
+// UpdateProfile - редактирование профиля
 func UpdateProfile(c *gin.Context) {
 	userID := c.GetUint("userID")
 	var input struct {
@@ -82,5 +82,21 @@ func UpdateProfile(c *gin.Context) {
 	user.Bio = input.Bio
 	database.DB.Save(&user)
 
+	c.JSON(200, user)
+}
+
+// SearchUsers - поиск пользователей по имени
+func SearchUsers(c *gin.Context) {
+	query := c.Query("q")
+	var users []models.User
+	database.DB.Where("username ILIKE ?", "%"+query+"%").Find(&users)
+	c.JSON(200, users)
+}
+
+// GetUserByID - получить пользователя по ID
+func GetUserByID(c *gin.Context) {
+	id := c.Param("id")
+	var user models.User
+	database.DB.First(&user, id)
 	c.JSON(200, user)
 }

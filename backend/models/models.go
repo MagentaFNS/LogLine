@@ -35,6 +35,8 @@ type Post struct {
 	Username  string    `json:"username"`
 	Avatar    string    `json:"avatar"`
 	Likes     int       `json:"likes"`
+	Image     string    `json:"image"`
+	Code      string    `json:"code"`
 	CreatedAt time.Time `json:"created_at"`
 }
 
@@ -43,5 +45,15 @@ type Notification struct {
 	UserID    uint      `json:"user_id"`
 	Text      string    `json:"text"`
 	IsRead    bool      `json:"is_read" gorm:"default:false"`
+	CreatedAt time.Time `json:"created_at"`
+}
+
+// Work не забыли!
+type Work struct {
+	ID        uint      `json:"id" gorm:"primaryKey"`
+	Title     string    `json:"title"`
+	Company   string    `json:"company"`
+	Location  string    `json:"location"`
+	Salary    string    `json:"salary"`
 	CreatedAt time.Time `json:"created_at"`
 }

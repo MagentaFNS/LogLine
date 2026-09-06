@@ -3,8 +3,8 @@ import { useStore } from '../store/useStore';
 
 export const LoginPage = () => {
   const [isRegister, setIsRegister] = useState(false);
-  const [username, setUsername] = useState('Алексей');
-  const [password, setPassword] = useState('1234');
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
   const { login, register } = useStore();
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -28,8 +28,8 @@ export const LoginPage = () => {
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Имя пользователя</label>
-            <input 
-              type="text" 
+            <input
+              type="text"
               value={username}
               onChange={e => setUsername(e.target.value)}
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-black focus:border-transparent outline-none"
@@ -38,8 +38,8 @@ export const LoginPage = () => {
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Пароль</label>
-            <input 
-              type="password" 
+            <input
+              type="password"
               value={password}
               onChange={e => setPassword(e.target.value)}
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-black focus:border-transparent outline-none"
@@ -47,8 +47,8 @@ export const LoginPage = () => {
             />
           </div>
 
-          <button 
-            type="submit" 
+          <button
+            type="submit"
             className="w-full bg-logline-dark text-white py-3 rounded-lg font-medium hover:bg-gray-800 transition"
           >
             {isRegister ? 'Создать аккаунт' : 'Войти'}
@@ -56,8 +56,8 @@ export const LoginPage = () => {
         </form>
 
         <div className="text-center mt-4">
-          <button 
-            onClick={() => setIsRegister(!isRegister)} 
+          <button
+            onClick={() => setIsRegister(!isRegister)}
             className="text-sm text-gray-500 hover:text-black"
           >
             {isRegister ? 'Уже есть аккаунт? Войти' : 'Нет аккаунта? Зарегистрироваться'}

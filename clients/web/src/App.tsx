@@ -1,19 +1,23 @@
 import { useEffect, useState } from 'react';
 import { useStore } from './store/useStore';
 import { LoginPage } from './pages/LoginPage';
-import { HomePage } from './pages/HomePages';
+import { HomePage } from './pages/HomePage';
 import { NotesPage } from './pages/NotesPage';
 import { ChatPage } from './pages/ChatPage';
 import { AdminPage } from './pages/AdminPage';
 import { ProfilePage } from './pages/ProfilePage';
 import { JobsPage } from './pages/JobsPage';
 import { MatchesPage } from './pages/MatchesPage';
+import { NotificationsPage } from './pages/NotificationsPage';
+import { SettingsPage } from './pages/SettingsPage';
+import { UserProfileModal } from './components/UserProfileModal';
 import { Sidebar } from './components/Sidebar';
 import { Header } from './components/Header';
 
 function App() {
   const { currentUser, token, fetchNotes, fetchNotifications } = useStore();
   const [activeTab, setActiveTab] = useState('Главная');
+  const [visitedUserId, setVisitedUserId] = useState<number | null>(null);
 
   useEffect(() => {
     if (token) {
@@ -28,7 +32,7 @@ function App() {
     <div className="flex h-screen overflow-hidden bg-[#f4f4f4]">
       <Sidebar activeTab={activeTab} setActiveTab={setActiveTab} />
       <div className="flex-1 flex flex-col overflow-hidden">
-        <Header activeTab={activeTab} />
+        <Header activeTab={activeTab} onOpenUserProfile={setVisitedUserId} />
         <main className="flex-1 overflow-hidden">
           <div key={activeTab} className="h-full fade-in-up">
             {activeTab === 'Главная' && <HomePage />}
@@ -36,11 +40,24 @@ function App() {
             {activeTab === 'Чаты' && <ChatPage />}
             {activeTab === 'Знакомства' && <MatchesPage />}
             {activeTab === 'Работы' && <JobsPage />}
+            {activeTab === 'Уведомления' && <NotificationsPage />}
             {activeTab === 'Профиль' && <ProfilePage />}
+            {activeTab === 'Настройки' && <SettingsPage />}
             {activeTab === 'Админ-панель' && <AdminPage />}
           </div>
         </main>
       </div>
+
+      {visitedUserId && (
+        <UserProfileModal
+          userId={visitedUserId}
+          onClose={() => setVisitedUserId(null)}
+          onStartChat={(id) => {
+            setVisitedUserId(null);
+            setActiveTab('Чаты');
+          }}
+        />
+      )}
     </div>
   );
 }

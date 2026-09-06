@@ -3,16 +3,26 @@ import { io, Socket } from 'socket.io-client';
 import { Send, Search, Phone, Video, MoreVertical, Paperclip, Mic } from 'lucide-react';
 import { useStore } from '../store/useStore';
 import { ChatMessage } from '../types';
+import axios from 'axios';
 
 export const ChatPage = () => {
   const { currentUser, token } = useStore();
   const [socket, setSocket] = useState<Socket | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [text, setText] = useState('');
-  const [selectedChat, setSelectedChat] = useState('Мария Иванова');
+  const [selectedUser, setSelectedUser] = useState<any>(null);
+  const [userList, setUserList] = useState<any[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    const fetchUsers = async () => {
+      const res = await axios.get('http://localhost:8080/api/admin/users', {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setUserList(res.data);
+    };
+    fetchUsers();
+
     const newSocket = io('http://localhost:8080', {
       auth: { token }
     });
@@ -31,6 +41,18 @@ export const ChatPage = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
+  const fetchMessages = async (id: number) => {
+    const res = await axios.get(`http://localhost:8080/api/chat/${id}`, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    setMessages(res.data);
+  };
+
+  const openChat = async (user: any) => {
+    setSelectedUser(user);
+    await fetchMessages(user.id);
+  };
+
   const sendMessage = () => {
     if (text.trim() && socket) {
       socket.emit('message', {
@@ -44,7 +66,6 @@ export const ChatPage = () => {
 
   return (
     <div className="h-full flex p-8">
-      {/* Список контактов */}
       <div className="w-[350px] bg-white border border-gray-100 rounded-2xl mr-4 flex flex-col">
         <div className="p-4 border-b">
           <h2 className="font-bold text-lg mb-3">Чаты</h2>
@@ -54,40 +75,32 @@ export const ChatPage = () => {
           </div>
         </div>
         <div className="flex-1 overflow-y-auto p-2">
-          {[
-            { name: 'Мария Иванова', time: '11:42', active: true },
-            { name: 'Дмитрий Смирнов', time: '11:15', active: false },
-            { name: 'Рабочий чат', time: '10:15', active: false },
-            { name: 'Ольга Петрова', time: 'Вчера', active: false },
-            { name: 'Иван Кузнецов', time: 'Вчера', active: false },
-          ].map((chat) => (
+          {userList.map((user) => (
             <button
-              key={chat.name}
-              onClick={() => setSelectedChat(chat.name)}
-              className={`w-full flex items-center gap-3 p-3 rounded-xl mb-1 transition ${selectedChat === chat.name ? 'bg-black text-white' : 'hover:bg-gray-100'}`}
+              key={user.id}
+              onClick={() => openChat(user)}
+              className={`w-full flex items-center gap-3 p-3 rounded-xl mb-1 transition ${selectedUser?.id === user.id ? 'bg-black text-white' : 'hover:bg-gray-100'}`}
             >
               <div className="w-10 h-10 rounded-full bg-gray-300 overflow-hidden">
-                <img src={`https://i.pravatar.cc/100?u=${chat.name}`} className="w-full h-full object-cover" />
+                <img src={user.avatar || 'https://i.pravatar.cc/100'} className="w-full h-full object-cover" />
               </div>
               <div className="flex-1 text-left">
-                <p className="font-bold text-sm">{chat.name}</p>
-                <p className="text-xs">{chat.active ? 'в сети' : 'не в сети'}</p>
+                <p className="font-bold text-sm">{user.username}</p>
+                <p className="text-xs">в сети</p>
               </div>
-              <div className="text-xs text-gray-400">{chat.time}</div>
             </button>
           ))}
         </div>
       </div>
 
-      {/* Окно чата */}
       <div className="flex-1 bg-white border border-gray-100 rounded-2xl flex flex-col">
         <div className="p-4 border-b flex justify-between items-center">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-full bg-gray-200 overflow-hidden">
-              <img src={`https://i.pravatar.cc/100?u=${selectedChat}`} className="w-full h-full object-cover" />
+              <img src={selectedUser?.avatar || 'https://i.pravatar.cc/100'} className="w-full h-full object-cover" />
             </div>
             <div>
-              <h3 className="font-bold">{selectedChat}</h3>
+              <h3 className="font-bold">{selectedUser?.username || 'Чат'}</h3>
               <p className="text-xs text-green-500">в сети</p>
             </div>
           </div>
@@ -99,6 +112,11 @@ export const ChatPage = () => {
         </div>
 
         <div className="flex-1 p-6 overflow-y-auto space-y-4">
+          {messages.length === 0 && (
+            <div className="h-full flex items-center justify-center text-gray-400">
+              Нет сообщений. Напишите первым!
+            </div>
+          )}
           {messages.map((msg) => (
             <div key={msg.id} className={`flex ${msg.username === currentUser?.username ? 'justify-end' : 'justify-start'}`}>
               <div className={`max-w-[70%] rounded-2xl p-4 ${

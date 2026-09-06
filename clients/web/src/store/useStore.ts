@@ -21,8 +21,9 @@ interface State {
   createNote: (title: string, content: string) => Promise<void>;
   deleteNote: (id: number) => Promise<void>;
   fetchPosts: () => Promise<void>;
-  createPost: (content: string) => Promise<void>;
+  createPost: (content: string, image?: string, code?: string) => Promise<void>;
   likePost: (id: number) => Promise<void>;
+  unlikePost: (id: number) => Promise<void>;
   fetchWorks: () => Promise<void>;
   createWork: (title: string, company: string, location: string, salary: string) => Promise<void>;
   fetchNotifications: () => Promise<void>;
@@ -93,13 +94,18 @@ export const useStore = create<State>((set, get) => ({
     set({ posts: res.data });
   },
 
-  createPost: async (content) => {
-    await axios.post(`${API}/posts`, { content }, { headers: { Authorization: `Bearer ${get().token}` } });
+  createPost: async (content, image, code) => {
+    await axios.post(`${API}/posts`, { content, image, code }, { headers: { Authorization: `Bearer ${get().token}` } });
     await get().fetchPosts();
   },
 
   likePost: async (id) => {
     await axios.post(`${API}/posts/${id}/like`, {}, { headers: { Authorization: `Bearer ${get().token}` } });
+    await get().fetchPosts();
+  },
+
+  unlikePost: async (id) => {
+    await axios.post(`${API}/posts/${id}/unlike`, {}, { headers: { Authorization: `Bearer ${get().token}` } });
     await get().fetchPosts();
   },
 

@@ -39,6 +39,7 @@ func Connect() {
 		&models.ChatMessage{}, 
 		&models.Post{}, 
 		&models.Notification{},
+		&models.Work{}, // ДОБАВЬ ЭТУ СТРОКУ!
 	)
 	if err != nil {
 		log.Fatal("❌ Ошибка миграции: ", err)

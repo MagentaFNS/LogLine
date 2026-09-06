@@ -15,20 +15,14 @@ export interface Note {
   created_at: string;
 }
 
-export interface Work {
-  id: number;
-  title: string;
-  company: string;
-  location: string;
-  salary: string;
-}
-
 export interface Post {
   id: number;
   content: string;
   username: string;
   avatar: string;
   likes: number;
+  image: string;
+  code: string;
   created_at: string;
 }
 
@@ -44,5 +38,14 @@ export interface Notification {
   id: number;
   text: string;
   is_read: boolean;
+  created_at: string;
+}
+
+export interface Work {
+  id: number;
+  title: string;
+  company: string;
+  location: string;
+  salary: string;
   created_at: string;
 }

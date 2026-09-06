@@ -14,7 +14,7 @@ func main() {
 	// Настраиваем маршруты
 	r := routes.SetupRouter()
 
-	log.Println("🚀 LogLine Backend запущен на порту 8080")
+	log.Println("Backend запущен на порту 8080")
 	if err := r.Run(":8080"); err != nil {
 		log.Fatal("Ошибка запуска сервера: ", err)
 	}

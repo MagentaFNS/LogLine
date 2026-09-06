@@ -25,7 +25,7 @@ export const Header = ({ activeTab }: { activeTab: string }) => {
         </button>
         <div className="flex items-center gap-3 cursor-pointer hover:bg-gray-50 p-1 rounded-xl transition">
           <div className="w-10 h-10 rounded-full bg-gray-200 overflow-hidden">
-            <img src="https://i.pravatar.cc/100?img=12" alt="Avatar" className="w-full h-full object-cover" />
+            <img src={currentUser?.avatar} alt="Avatar" className="w-full h-full object-cover" />
           </div>
           <div className="hidden lg:block">
             <p className="text-sm font-bold">{currentUser?.username}</p>

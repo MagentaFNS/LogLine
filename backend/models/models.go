@@ -25,6 +25,8 @@ type ChatMessage struct {
 	UserID    uint      `json:"user_id"`
 	Username  string    `json:"username"`
 	Text      string    `json:"text"`
+	FileURL   string    `json:"file_url"`
+	MessageType string  `json:"message_type"` // text, image, video, file
 	CreatedAt time.Time `json:"created_at"`
 }
 
@@ -48,7 +50,6 @@ type Notification struct {
 	CreatedAt time.Time `json:"created_at"`
 }
 
-// Work не забыли!
 type Work struct {
 	ID        uint      `json:"id" gorm:"primaryKey"`
 	Title     string    `json:"title"`

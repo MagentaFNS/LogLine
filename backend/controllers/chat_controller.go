@@ -2,6 +2,8 @@ package controllers
 
 import (
 	"net/http"
+	"time"
+
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
 
@@ -29,7 +31,8 @@ func HandleWebSocket(c *gin.Context) {
 			delete(clients, conn)
 			return
 		}
-		
+
+		msg.CreatedAt = time.Now()
 		database.DB.Create(&msg)
 
 		for client := range clients {
@@ -39,17 +42,4 @@ func HandleWebSocket(c *gin.Context) {
 			}
 		}
 	}
-}
-
-func GetMessagesWithUser(c *gin.Context) {
-	userID := c.GetUint("userID")
-	otherUserID := c.Param("id")
-
-	var messages []models.ChatMessage
-	database.DB.Where(
-		"(user_id = ? AND username = ?) OR (user_id = ? AND username = ?)",
-		userID, otherUserID, otherUserID, userID,
-	).Order("created_at asc").Find(&messages)
-
-	c.JSON(200, messages)
 }

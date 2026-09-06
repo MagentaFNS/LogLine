@@ -22,8 +22,6 @@ func SetupRouter() *gin.Engine {
 	{
 		api.POST("/register", controllers.Register)
 		api.POST("/login", controllers.Login)
-		api.GET("/ws", controllers.HandleWebSocket)
-		api.GET("/search-users", controllers.SearchUsers)
 
 		protected := api.Group("")
 		protected.Use(middleware.AuthMiddleware())
@@ -34,9 +32,10 @@ func SetupRouter() *gin.Engine {
 			protected.GET("/note-stats", controllers.GetNoteStats)
 
 			protected.POST("/upload/avatar", controllers.UploadAvatar)
-			protected.POST("/update-profile", controllers.UpdateProfile)
+
 
 			protected.POST("/upload/post-image", controllers.UploadPostImage)
+
 
 			protected.GET("/works", controllers.GetWorks)
 			protected.POST("/works", controllers.CreateWork)
@@ -51,14 +50,10 @@ func SetupRouter() *gin.Engine {
 
 			protected.GET("/notifications", controllers.GetNotifications)
 			protected.POST("/notifications/read-all", controllers.MarkAllNotificationsRead)
-			
+
 			protected.GET("/admin/users", controllers.GetUsers)
 			protected.GET("/admin/stats", controllers.GetStats)
 
-			protected.GET("/users/:id", controllers.GetUserByID)
-			
-			// НОВОЕ: Получить чат с конкретным пользователем
-			protected.GET("/chat/:id", controllers.GetMessagesWithUser)
 		}
 	}
 

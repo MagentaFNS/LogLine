@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Heart, Send, Trash2, Image as ImageIcon, Code, Copy, Check } from 'lucide-react';
 import { useStore } from '../store/useStore';
 import axios from 'axios';
+import { Avatar } from '../components/Avatar';
 
 export const HomePage = () => {
   const { token, currentUser, posts, fetchPosts, createPost, likePost, unlikePost } = useStore();
@@ -87,7 +88,7 @@ export const HomePage = () => {
       
       <div className="bg-white p-6 rounded-2xl mb-6 border border-gray-100 shadow-sm">
         <div className="flex gap-3">
-          <img src={currentUser?.avatar} className="w-10 h-10 rounded-full" />
+          <Avatar uri={currentUser?.avatar} username={currentUser?.username} size={40} />
           <div className="flex-1">
             <textarea
               value={content}
@@ -139,7 +140,7 @@ export const HomePage = () => {
         {posts.map(post => (
           <div key={post.id} className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm">
             <div className="flex items-center gap-3 mb-4">
-              <img src={post.avatar} className="w-10 h-10 rounded-full" />
+              <Avatar uri={post.avatar} username={post.username} size={40} />
               <div>
                 <p className="font-bold">{post.username}</p>
                 <p className="text-xs text-gray-500">{new Date(post.created_at).toLocaleDateString('ru-RU')}</p>

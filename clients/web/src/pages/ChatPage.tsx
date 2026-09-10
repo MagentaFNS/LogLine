@@ -3,6 +3,7 @@ import { io } from 'socket.io-client';
 import { Send } from 'lucide-react';
 import { useStore } from '../store/useStore';
 import axios from 'axios';
+import { Avatar } from '../components/Avatar';
 
 export const ChatPage = () => {
   const { currentUser, token } = useStore();
@@ -80,7 +81,7 @@ export const ChatPage = () => {
               }`}
             >
               <div className="w-10 h-10 rounded-full bg-gray-300 overflow-hidden">
-                <img src={user.avatar || 'https://i.pravatar.cc/100'} className="w-full h-full object-cover" />
+                <Avatar uri={user.avatar} username={user.username} size={40} />
               </div>
               <div className="flex-1 text-left">
                 <p className="font-bold text-sm">{user.username}</p>
@@ -95,7 +96,7 @@ export const ChatPage = () => {
         <div className="p-4 border-b flex justify-between items-center">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-full bg-gray-200 overflow-hidden">
-              <img src={selectedUser?.avatar || 'https://i.pravatar.cc/100'} className="w-full h-full object-cover" />
+              <Avatar uri={selectedUser?.avatar} username={selectedUser?.username} size={40} />
             </div>
             <div>
               <h3 className="font-bold">{selectedUser?.username || 'Чат'}</h3>

@@ -1,6 +1,7 @@
 import { Camera, Lock, User as UserIcon } from 'lucide-react';
 import { useRef, useState } from 'react';
 import { useStore } from '../store/useStore';
+import { Avatar } from '../components/Avatar';
 
 export const ProfilePage = () => {
   const { currentUser, updateAvatar, updateProfile } = useStore();
@@ -25,7 +26,9 @@ export const ProfilePage = () => {
       <div className="flex gap-8 items-start">
         <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm w-72">
           <div className="relative w-32 h-32 mx-auto mb-4">
-            <img src={currentUser?.avatar} className="w-full h-full rounded-full object-cover border-4 border-black" />
+            <div className="w-full h-full rounded-full overflow-hidden border-4 border-black">
+              <Avatar uri={currentUser?.avatar} username={currentUser?.username} size={128} />
+            </div>
             <button onClick={() => fileInputRef.current?.click()} className="absolute bottom-0 right-0 bg-black text-white p-2 rounded-full">
               <Camera size={16} />
             </button>

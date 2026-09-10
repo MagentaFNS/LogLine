@@ -28,15 +28,14 @@
 - **Анализировать ошибки.** Понимать, на чём ты спотыкаешься чаще всего.
 - **Строить график роста.** Знать, сколько строк кода ты написал за месяц.
 
-## Вид
+### Баннер
+
+---
 
 <div align="center" style="display: flex; gap: 20px; justify-content: center; flex-wrap: wrap;">
-  <img src="docs/assets/Design/Design_LogLine_Desktop.png" 
+  <img src="docs/assets/Design/Design_new.jpeg" 
        alt="LogLine Design 1" 
-       style="border-radius: 30px; max-width: 45%;">
-  <img src="docs/assets/Design/Design_LogLine.png" 
-       alt="LogLine Design 2" 
-       style="border-radius: 30px; max-width: 45%;">
+       style="border-radius: 50px; max-width: 90%;">
 </div>
 
 ## Быстрый старт
@@ -89,6 +88,17 @@ pip install -r requirements.txt
 **Минималистичный интерфейс** — всё, что нужно, без лишнего шума.
 
 **Интеграция с GitHub** — анализ коммитов без лишних телодвижений.
+
+## Вид
+
+<div align="center" style="display: flex; gap: 20px; justify-content: center; flex-wrap: wrap;">
+  <img src="docs/assets/Design/Design_LogLine_Desktop.png" 
+       alt="LogLine Design 1" 
+       style="border-radius: 30px; max-width: 45%;">
+  <img src="docs/assets/Design/Design_LogLine.png" 
+       alt="LogLine Design 2" 
+       style="border-radius: 30px; max-width: 45%;">
+</div>
 
 ## Полностью открытый исходный код
 **LogLine имеет полностью открытый исходный код под лицензией MIT license, и мы приглашаем вас создать систему контроля версий будущего в открытом доступе.**

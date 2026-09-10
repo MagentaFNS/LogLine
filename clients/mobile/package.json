@@ -9,21 +9,21 @@
     "web": "expo start --web"
   },
   "dependencies": {
-    "expo": "~51.0.0",
-    "expo-status-bar": "~1.12.1",
-    "react": "18.2.0",
-    "react-native": "0.74.5",
-    "zustand": "^4.5.4",
+    "expo": "~57.0.21",
+    "expo-status-bar": "~57.0.1",
+    "expo-image-picker": "~57.0.16",
+    "react": "19.2.3",
+    "react-native": "0.86.3",
+    "zustand": "^5.0.0",
     "axios": "^1.7.2",
     "socket.io-client": "^4.7.5",
-    "lucide-react-native": "^0.414.0",
-    "react-native-svg": "15.2.0",
-    "expo-image-picker": "~15.0.7"
+    "lucide-react-native": "^0.500.0",
+    "react-native-svg": "15.15.4"
   },
   "devDependencies": {
-    "@babel/core": "^7.24.0",
-    "@types/react": "~18.2.79",
-    "typescript": "~5.3.3"
+    "@babel/core": "^7.25.0",
+    "@types/react": "~19.2.4",
+    "typescript": "~6.0.3"
   },
   "private": true
 }

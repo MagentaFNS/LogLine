@@ -9,16 +9,26 @@
     "web": "expo start --web"
   },
   "dependencies": {
+    "@react-native-async-storage/async-storage": "2.2.0",
+    "@react-native-masked-view/masked-view": "0.3.2",
+    "@react-navigation/bottom-tabs": "^7.18.18",
+    "@react-navigation/native": "^7.3.18",
+    "axios": "^1.7.2",
     "expo": "~57.0.21",
-    "expo-status-bar": "~57.0.1",
+    "expo-blur": "~57.0.2",
+    "expo-constants": "~57.0.17",
+    "expo-haptics": "~57.0.2",
     "expo-image-picker": "~57.0.16",
+    "expo-linear-gradient": "~57.0.1",
+    "expo-status-bar": "~57.0.1",
+    "lucide-react-native": "^1.44.0",
     "react": "19.2.3",
     "react-native": "0.86.3",
-    "zustand": "^5.0.0",
-    "axios": "^1.7.2",
+    "react-native-safe-area-context": "~5.7.0",
+    "react-native-screens": "~4.26.0",
+    "react-native-svg": "^15.15.4",
     "socket.io-client": "^4.7.5",
-    "lucide-react-native": "^0.500.0",
-    "react-native-svg": "15.15.4"
+    "zustand": "^5.0.0"
   },
   "devDependencies": {
     "@babel/core": "^7.25.0",

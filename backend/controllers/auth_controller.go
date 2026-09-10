@@ -67,10 +67,30 @@ func Login(c *gin.Context) {
 	c.JSON(200, gin.H{"token": tokenString, "user": user})
 }
 
-// Новый маршрут: GET /api/me
 func GetCurrentUser(c *gin.Context) {
 	userID := c.GetUint("userID")
 	var user models.User
 	database.DB.First(&user, userID)
+
+	// Используем функцию из social_controller.go (тот же пакет)
+	user.Avatar = normalizeAvatar(user.Avatar)
+
+	c.JSON(200, user)
+}
+
+func UpdateProfile(c *gin.Context) {
+	userID := c.GetUint("userID")
+	var input struct {
+		Username string `json:"username"`
+		Bio      string `json:"bio"`
+	}
+	c.ShouldBindJSON(&input)
+
+	var user models.User
+	database.DB.First(&user, userID)
+	user.Username = input.Username
+	user.Bio = input.Bio
+	database.DB.Save(&user)
+
 	c.JSON(200, user)
 }

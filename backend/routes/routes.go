@@ -11,8 +11,10 @@ import (
 func SetupRouter() *gin.Engine {
 	r := gin.Default()
 
+	// НОВОЕ: Erlaube alle Ports! (Einfach machen)
 	config := cors.DefaultConfig()
-	config.AllowOrigins = []string{"http://localhost:5173", "http://127.0.0.1:5173"}
+	config.AllowAllOrigins = true
+	config.AllowCredentials = false
 	config.AllowHeaders = []string{"Origin", "Content-Type", "Authorization"}
 	r.Use(cors.New(config))
 
@@ -22,10 +24,13 @@ func SetupRouter() *gin.Engine {
 	{
 		api.POST("/register", controllers.Register)
 		api.POST("/login", controllers.Login)
+		api.GET("/ws", controllers.HandleWebSocket)
 
 		protected := api.Group("")
 		protected.Use(middleware.AuthMiddleware())
 		{
+			protected.GET("/me", controllers.GetCurrentUser)
+			
 			protected.GET("/notes", controllers.GetNotes)
 			protected.POST("/notes", controllers.CreateNote)
 			protected.DELETE("/notes/:id", controllers.DeleteNote)
@@ -33,9 +38,7 @@ func SetupRouter() *gin.Engine {
 
 			protected.POST("/upload/avatar", controllers.UploadAvatar)
 
-
 			protected.POST("/upload/post-image", controllers.UploadPostImage)
-
 
 			protected.GET("/works", controllers.GetWorks)
 			protected.POST("/works", controllers.CreateWork)

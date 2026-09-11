@@ -3,7 +3,7 @@
 
 <div align="center">
 
-<img src="docs/assets/Svg/README_TITLE.svg" alt="Анимированный заголовок" width="2000" />
+<img src="docs/assets/Svg/README_TITLE.svg" alt="Анимированный заголовок" width="3000" />
 
 <p>
   <a href="https://discord.gg/6bMMJZxyGS"><· Join the conversation ·></a>

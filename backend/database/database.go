@@ -14,32 +14,32 @@ import (
 var DB *gorm.DB
 
 func Connect() {
-	// Загружаем переменные из .env (файл лежит в корне проекта)
-	err := godotenv.Load("../.env")
-	if err != nil {
+	if err := godotenv.Load("../.env"); err != nil {
 		log.Fatal("❌ Не удалось загрузить файл .env (путь: ../.env)")
 	}
 
-	host := os.Getenv("DB_HOST")
-	user := os.Getenv("DB_USER")
-	pass := os.Getenv("DB_PASSWORD")
-	name := os.Getenv("DB_NAME")
-	port := os.Getenv("DB_PORT")
+	dsn := "host=" + os.Getenv("DB_HOST") +
+		" user=" + os.Getenv("DB_USER") +
+		" password=" + os.Getenv("DB_PASSWORD") +
+		" dbname=" + os.Getenv("DB_NAME") +
+		" port=" + os.Getenv("DB_PORT") +
+		" sslmode=disable"
 
-	dsn := "host=" + host + " user=" + user + " password=" + pass + " dbname=" + name + " port=" + port + " sslmode=disable"
-	var dbErr error
-	DB, dbErr = gorm.Open(postgres.Open(dsn), &gorm.Config{})
-	if dbErr != nil {
-		log.Fatal("❌ Не удалось подключиться к PostgreSQL: ", dbErr)
+	var err error
+	DB, err = gorm.Open(postgres.Open(dsn), &gorm.Config{})
+	if err != nil {
+		log.Fatal("❌ Не удалось подключиться к PostgreSQL: ", err)
 	}
 
 	err = DB.AutoMigrate(
-		&models.User{}, 
-		&models.Note{}, 
-		&models.ChatMessage{}, 
-		&models.Post{}, 
+		&models.User{},
+		&models.Note{},
+		&models.Chat{},
+		&models.ChatMember{},
+		&models.Message{},
+		&models.Post{},
 		&models.Notification{},
-		&models.Work{}, // ДОБАВЬ ЭТУ СТРОКУ!
+		&models.Work{},
 	)
 	if err != nil {
 		log.Fatal("❌ Ошибка миграции: ", err)

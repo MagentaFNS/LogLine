@@ -9,6 +9,7 @@ type User struct {
 	Role      string    `json:"role"`
 	Avatar    string    `json:"avatar" gorm:"default:'https://i.pravatar.cc/150'"`
 	Bio       string    `json:"bio"`
+	LastSeen  time.Time `json:"last_seen"`
 	CreatedAt time.Time `json:"created_at"`
 }
 
@@ -20,15 +21,42 @@ type Note struct {
 	CreatedAt time.Time `json:"created_at"`
 }
 
-type ChatMessage struct {
+// ===== ЧАТЫ =====
+
+type Chat struct {
 	ID        uint      `json:"id" gorm:"primaryKey"`
-	UserID    uint      `json:"user_id"`
-	Username  string    `json:"username"`
-	Text      string    `json:"text"`
-	FileURL   string    `json:"file_url"`
-	MessageType string  `json:"message_type"` // text, image, video, file
+	Type      string    `json:"type"`
+	Title     string    `json:"title"`
+	Avatar    string    `json:"avatar"`
+	CreatedBy uint      `json:"created_by"`
 	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
 }
+
+type ChatMember struct {
+	ID         uint      `json:"id" gorm:"primaryKey"`
+	ChatID     uint      `json:"chat_id" gorm:"index:idx_chat_user,unique"`
+	UserID     uint      `json:"user_id" gorm:"index:idx_chat_user,unique"`
+	JoinedAt   time.Time `json:"joined_at"`
+	LastReadAt time.Time `json:"last_read_at"`
+}
+
+type Message struct {
+	ID          uint      `json:"id" gorm:"primaryKey"`
+	ChatID      uint      `json:"chat_id" gorm:"index"`
+	UserID      uint      `json:"user_id" gorm:"index"`
+	Content     string    `json:"content"`
+	Type        string    `json:"type"`
+	FileURL     string    `json:"file_url"`
+	ReplyToID   *uint     `json:"reply_to_id,omitempty"`
+	ClientMsgID string    `json:"client_msg_id" gorm:"index"`
+	IsEdited    bool      `json:"is_edited" gorm:"default:false"`
+	IsDeleted   bool      `json:"is_deleted" gorm:"default:false"`
+	CreatedAt   time.Time `json:"created_at"`
+	UpdatedAt   time.Time `json:"updated_at"`
+}
+
+// ===== ПОСТЫ / УВЕДОМЛЕНИЯ / РАБОТЫ =====
 
 type Post struct {
 	ID        uint      `json:"id" gorm:"primaryKey"`

@@ -23,6 +23,7 @@ export const Avatar = ({ uri, username, size = 44 }: Props) => {
           background: '#000',
         }}
         onError={(e) => {
+          // Если картинка не загрузилась — прячем её
           (e.target as HTMLImageElement).style.display = 'none';
         }}
       />

@@ -37,34 +37,44 @@ func NewHub() *Hub {
 	}
 }
 
+// safeClose — безопасно закрывает канал (без паники)
+func safeClose(ch chan []byte) {
+	defer func() {
+		if r := recover(); r != nil {
+			log.Printf("⚠️ [Hub] safeClose recover: %v", r)
+		}
+	}()
+	close(ch)
+}
+
 func (h *Hub) Run() {
 	log.Println("🟢 [Hub] запущен")
 	for {
 		select {
 		case client := <-h.register:
 			h.mu.Lock()
-			if old, ok := h.clients[client.UserID]; ok {
-				log.Printf("⚠️ [Hub] userID=%d уже был, закрываю старое", client.UserID)
-				close(old.Send)
-				for _, room := range h.rooms {
-					delete(room, old)
-				}
-			}
 			h.clients[client.UserID] = client
 			h.mu.Unlock()
 			log.Printf("🟢 [Hub] подключён userID=%d, всего: %d", client.UserID, len(h.clients))
 
 		case client := <-h.unregister:
 			h.mu.Lock()
-			if _, ok := h.clients[client.UserID]; ok {
+			_, exists := h.clients[client.UserID]
+			if exists {
 				delete(h.clients, client.UserID)
 				for _, room := range h.rooms {
 					delete(room, client)
 				}
-				close(client.Send)
 			}
 			h.mu.Unlock()
-			log.Printf("🔴 [Hub] отключён userID=%d", client.UserID)
+
+			if exists {
+				safeClose(client.Send)
+				log.Printf("🔴 [Hub] отключён userID=%d", client.UserID)
+				if h.OnLeave != nil {
+					h.OnLeave(client.UserID)
+				}
+			}
 
 		case payload := <-h.incoming:
 			log.Printf("📨 [Hub] incoming от userID=%d: %s", payload.Client.UserID, string(payload.Raw))
@@ -90,7 +100,6 @@ func (h *Hub) Run() {
 				log.Printf("❌ [Hub] marshal error: %v", err)
 				continue
 			}
-			log.Printf("📢 [Hub] payload: %s", string(data))
 
 			h.mu.RLock()
 			for client := range room {

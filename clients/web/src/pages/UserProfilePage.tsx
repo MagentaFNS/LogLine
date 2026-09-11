@@ -1,42 +1,99 @@
 import { useEffect, useState } from 'react';
-import { MessageSquare, Phone } from 'lucide-react';
-import axios from 'axios';
+import { useParams, useNavigate } from 'react-router-dom';
+import { ArrowLeft, MessageCircle } from 'lucide-react';
+import { api } from '../api';
 import { useStore } from '../store/useStore';
+import { Avatar } from '../components/Avatar';
+import { User } from '../types';
 
-export const UserProfilePage = ({ userId, onStartChat }: { userId: number; onStartChat: (userId: number) => void }) => {
-  const { token } = useStore();
-  const [user, setUser] = useState<any>(null);
+export const UserProfilePage = () => {
+  const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
+  const { createPrivateChat, openChat, chats } = useStore();
+
+  const [user, setUser] = useState<User | null>(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const fetchUser = async () => {
-      const res = await axios.get(`http://localhost:8080/api/users/${userId}`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      setUser(res.data);
-    };
-    fetchUser();
-  }, [userId, token]);
+    if (!id) return;
+    api.get(`/users/${id}`)
+      .then((res) => {
+        setUser(res.data);
+      })
+      .catch(() => {
+        setUser(null);
+      })
+      .finally(() => setLoading(false));
+  }, [id]);
+
+  const handleWrite = async () => {
+    if (!user) return;
+    const chat = await createPrivateChat(user.id);
+    if (chat) {
+      const fullChat = chats.find((c) => c.id === chat.id);
+      if (fullChat) openChat(fullChat);
+      navigate('/chats');
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="h-full flex items-center justify-center text-gray-400 animate-fadeIn">
+        Загрузка...
+      </div>
+    );
+  }
+
+  if (!user) {
+    return (
+      <div className="h-full flex flex-col items-center justify-center gap-4 animate-fadeIn">
+        <p className="text-gray-400">Пользователь не найден</p>
+        <button
+          onClick={() => navigate(-1)}
+          className="px-4 py-2 bg-black text-white rounded-lg text-sm"
+        >
+          Назад
+        </button>
+      </div>
+    );
+  }
 
   return (
-    <div className="p-8">
-      <div className="bg-white rounded-2xl border border-gray-100 p-8">
-        <div className="flex items-center gap-6 mb-8">
-          <img src={user?.avatar || 'https://i.pravatar.cc/150'} className="w-24 h-24 rounded-full object-cover" />
-          <div>
-            <h1 className="text-2xl font-bold">{user?.username || 'Загрузка...'}</h1>
-            <p className="text-gray-500">@{user?.username?.toLowerCase()}</p>
-          </div>
-        </div>
+    <div className="h-full overflow-y-auto p-8 bg-[#f5f5f7]">
+      <button
+        onClick={() => navigate(-1)}
+        className="mb-4 flex items-center gap-2 text-gray-500 hover:text-black transition-all"
+      >
+        <ArrowLeft size={18} />
+        Назад
+      </button>
 
-        <div className="flex gap-4">
+      <div className="max-w-2xl mx-auto">
+        <div className="bg-white rounded-2xl p-8 text-center shadow-sm animate-scaleIn">
+          <div className="mx-auto mb-4 animate-fadeInUp">
+            <Avatar uri={user.avatar} username={user.username} size={120} />
+          </div>
+
+          <h1 className="text-3xl font-bold mb-1 animate-fadeInUp" style={{ animationDelay: '100ms' }}>
+            {user.username}
+          </h1>
+          <p className="text-gray-400 text-sm mb-6 animate-fadeInUp" style={{ animationDelay: '150ms' }}>
+            #{user.id} · {user.role === 'admin' ? 'Администратор' : 'Пользователь'}
+          </p>
+
+          {user.bio && (
+            <p className="text-gray-600 mb-6 max-w-md mx-auto animate-fadeInUp" style={{ animationDelay: '200ms' }}>
+              {user.bio}
+            </p>
+          )}
+
           <button
-            onClick={() => onStartChat(userId)}
-            className="bg-black text-white px-4 py-2 rounded-lg flex items-center gap-2"
+            onClick={handleWrite}
+            className="inline-flex items-center gap-2 bg-black text-white px-6 py-3 rounded-xl font-semibold hover:bg-gray-800 transition-all duration-200 hover:scale-105 active:scale-95 animate-fadeInUp"
+            style={{ animationDelay: '250ms' }}
           >
-            <MessageSquare size={18} /> Написать
-          </button>
-          <button className="bg-gray-100 px-4 py-2 rounded-lg flex items-center gap-2">
-            <Phone size={18} /> Позвонить
+            <MessageCircle size={18} />
+            Написать сообщение
           </button>
         </div>
       </div>

@@ -12,10 +12,13 @@ import { NotificationsPage } from './pages/NotificationsPage';
 import { SettingsPage } from './pages/SettingsPage';
 import { Sidebar } from './components/Sidebar';
 import { Header } from './components/Header';
+import { UserProfileModal } from './components/UserProfileModal';
+import { User } from './types';
 
 function App() {
-  const { currentUser, token, fetchNotes, fetchNotifications } = useStore();
+  const { currentUser, token, fetchNotes, fetchNotifications, createPrivateChat, openChat, chats } = useStore();
   const [activeTab, setActiveTab] = useState('Главная');
+  const [profileUserId, setProfileUserId] = useState<number | null>(null);
 
   useEffect(() => {
     if (token) {
@@ -26,11 +29,25 @@ function App() {
 
   if (!currentUser) return <LoginPage />;
 
+  const handleWriteFromModal = async (user: User) => {
+    const chat = await createPrivateChat(user.id);
+    if (chat) {
+      const fullChat = chats.find((c) => c.id === chat.id);
+      if (fullChat) openChat(fullChat);
+      setProfileUserId(null);
+      setActiveTab('Чаты');
+    }
+  };
+
   return (
-    <div className="flex h-screen overflow-hidden bg-[#f4f4f4]">
+    <div className="flex h-screen overflow-hidden bg-[#f4f4f4]" style={{ zoom: 0.90 }}>
       <Sidebar activeTab={activeTab} setActiveTab={setActiveTab} />
       <div className="flex-1 flex flex-col overflow-hidden">
-        <Header activeTab={activeTab} />
+        <Header
+          activeTab={activeTab}
+          setActiveTab={setActiveTab}
+          onOpenProfile={(user) => setProfileUserId(user.id)}
+        />
         <main className="flex-1 overflow-hidden">
           <div key={activeTab} className="h-full fade-in-up">
             {activeTab === 'Главная' && <HomePage />}
@@ -45,6 +62,13 @@ function App() {
           </div>
         </main>
       </div>
+
+      {/* Модалка профиля */}
+      <UserProfileModal
+        userId={profileUserId}
+        onClose={() => setProfileUserId(null)}
+        onWrite={handleWriteFromModal}
+      />
     </div>
   );
 }

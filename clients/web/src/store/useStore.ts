@@ -4,21 +4,30 @@ import { WSClient } from '../ws';
 import { User, Note, Post, Notification, Work, Chat, Message } from '../types';
 
 interface State {
+  // Auth
   token: string | null;
   currentUser: User | null;
   isAdmin: boolean;
 
+  // Data
   notes: Note[];
   posts: Post[];
   notifications: Notification[];
   works: Work[];
 
+  // Chat
   chats: Chat[];
   currentChat: Chat | null;
   messages: Message[];
   ws: WSClient | null;
   typingUsers: Set<number>;
 
+  // Notifications (unread per chat)
+  chatNotifications: Record<number, number>;
+  unreadChats: number;
+  clearChatNotification: (chatId: number) => void;
+
+  // Actions
   login: (username: string, password: string) => Promise<void>;
   register: (username: string, password: string) => Promise<void>;
   logout: () => void;
@@ -50,6 +59,7 @@ interface State {
 }
 
 export const useStore = create<State>((set, get) => ({
+  // === INITIAL STATE ===
   token: localStorage.getItem('token'),
   currentUser: null,
   isAdmin: false,
@@ -65,6 +75,10 @@ export const useStore = create<State>((set, get) => ({
   ws: null,
   typingUsers: new Set(),
 
+  chatNotifications: {},
+  unreadChats: 0,
+
+  // === AUTH ===
   login: async (username, password) => {
     console.log('🔐 [login] попытка:', username);
     const res = await api.post('/login', { username, password });
@@ -95,6 +109,8 @@ export const useStore = create<State>((set, get) => ({
       chats: [],
       messages: [],
       currentChat: null,
+      chatNotifications: {},
+      unreadChats: 0,
     });
   },
 
@@ -120,6 +136,7 @@ export const useStore = create<State>((set, get) => ({
     }));
   },
 
+  // === NOTES ===
   fetchNotes: async () => {
     const res = await api.get('/notes');
     set({ notes: res.data });
@@ -135,6 +152,7 @@ export const useStore = create<State>((set, get) => ({
     await get().fetchNotes();
   },
 
+  // === POSTS ===
   fetchPosts: async () => {
     const res = await api.get('/posts');
     set({ posts: res.data });
@@ -155,6 +173,7 @@ export const useStore = create<State>((set, get) => ({
     await get().fetchPosts();
   },
 
+  // === WORKS ===
   fetchWorks: async () => {
     const res = await api.get('/works');
     set({ works: res.data });
@@ -165,9 +184,20 @@ export const useStore = create<State>((set, get) => ({
     await get().fetchWorks();
   },
 
+  // === NOTIFICATIONS ===
   fetchNotifications: async () => {
     const res = await api.get('/notifications');
     set({ notifications: res.data });
+  },
+
+  // === CHAT NOTIFICATIONS ===
+  clearChatNotification: (chatId) => {
+    set((state) => {
+      const newNotifications = { ...state.chatNotifications };
+      delete newNotifications[chatId];
+      const total = Object.values(newNotifications).reduce((a, b) => a + b, 0);
+      return { chatNotifications: newNotifications, unreadChats: total };
+    });
   },
 
   // === CHAT ===
@@ -185,6 +215,10 @@ export const useStore = create<State>((set, get) => ({
   openChat: async (chat) => {
     console.log('📂 [openChat] открываю:', chat.id, chat.peer?.username);
     set({ currentChat: chat, messages: [], typingUsers: new Set() });
+
+    // Очищаем уведомления для этого чата
+    get().clearChatNotification(chat.id);
+
     try {
       const res = await api.get(`/chats/${chat.id}/messages`);
       console.log('📂 [openChat] загружено сообщений:', res.data.length);
@@ -192,7 +226,6 @@ export const useStore = create<State>((set, get) => ({
 
       const ws = get().ws;
       if (ws) {
-        console.log('📂 [openChat] помечаю прочитанным');
         ws.send('message:read', { chat_id: chat.id });
       }
     } catch (e) {
@@ -207,7 +240,6 @@ export const useStore = create<State>((set, get) => ({
   sendMessage: (content) => {
     console.log('🔵 [sendMessage] вызван, content:', JSON.stringify(content));
     const { ws, currentChat } = get();
-    console.log('🔵 [sendMessage] ws есть:', !!ws, 'currentChat есть:', !!currentChat);
 
     if (!ws) {
       console.error('❌ [sendMessage] нет ws');
@@ -272,17 +304,21 @@ export const useStore = create<State>((set, get) => ({
 
     ws.on('message:new', (msg: Message) => {
       console.log('📥 [message:new] пришло:', msg);
-      const { currentChat } = get();
-      console.log('📥 [message:new] currentChat.id:', currentChat?.id, 'msg.chat_id:', msg.chat_id);
+      const { currentChat, currentUser } = get();
 
       if (currentChat && msg.chat_id === currentChat.id) {
         console.log('📥 [message:new] ✅ добавляю в UI');
-        set((state) => {
-          console.log('📥 [message:new] было:', state.messages.length, '→ стало:', state.messages.length + 1);
-          return { messages: [...state.messages, msg] };
-        });
+        set((state) => ({ messages: [...state.messages, msg] }));
       } else {
-        console.log('📥 [message:new] ⚠️ НЕ добавляю (чат не совпадает)');
+        if (msg.user_id !== currentUser?.id) {
+          console.log('🔔 [message:new] увеличиваю счётчик для чата', msg.chat_id);
+          set((state) => {
+            const newNotifications = { ...state.chatNotifications };
+            newNotifications[msg.chat_id] = (newNotifications[msg.chat_id] || 0) + 1;
+            const total = Object.values(newNotifications).reduce((a, b) => a + b, 0);
+            return { chatNotifications: newNotifications, unreadChats: total };
+          });
+        }
       }
 
       get().fetchChats();

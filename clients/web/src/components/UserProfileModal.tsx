@@ -1,52 +1,109 @@
 import { useEffect, useState } from 'react';
-import { MessageSquare, Phone, X } from 'lucide-react';
-import axios from 'axios';
+import { X, MessageCircle } from 'lucide-react';
+import { api } from '../api';
 import { useStore } from '../store/useStore';
+import { Avatar } from './Avatar';
+import { User } from '../types';
 
-export const UserProfileModal = ({ userId, onClose, onStartChat }: { userId: number; onClose: () => void; onStartChat: (id: number) => void }) => {
-  const { token } = useStore();
-  const [user, setUser] = useState<any>(null);
+interface Props {
+  userId: number | null;
+  onClose: () => void;
+  onWrite: (user: User) => void;
+}
+
+export const UserProfileModal = ({ userId, onClose, onWrite }: Props) => {
+  const [user, setUser] = useState<User | null>(null);
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    const fetchUser = async () => {
-      const res = await axios.get(`http://localhost:8080/api/users/${userId}`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      setUser(res.data);
+    if (!userId) {
+      setUser(null);
+      return;
+    }
+    setLoading(true);
+    api.get(`/users/${userId}`)
+      .then((res) => setUser(res.data))
+      .catch(() => setUser(null))
+      .finally(() => setLoading(false));
+  }, [userId]);
+
+  useEffect(() => {
+    const handleEsc = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
     };
-    fetchUser();
-  }, [userId, token]);
+    document.addEventListener('keydown', handleEsc);
+    return () => document.removeEventListener('keydown', handleEsc);
+  }, [onClose]);
+
+  if (!userId) return null;
 
   return (
-    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center">
-      <div className="bg-white rounded-2xl p-8 w-full max-w-md shadow-2xl">
-        <div className="flex items-center justify-between mb-6">
-          <h2 className="text-2xl font-bold">Профиль</h2>
-          <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-lg">
-            <X size={20} />
-          </button>
-        </div>
+    <>
+      {/* Затемнение */}
+      <div
+        className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[100] animate-fadeIn"
+        onClick={onClose}
+      />
 
-        <div className="flex items-center gap-6 mb-8">
-          <img src={user?.avatar || 'https://i.pravatar.cc/150'} className="w-24 h-24 rounded-full object-cover" />
-          <div>
-            <h1 className="text-2xl font-bold">{user?.username || 'Загрузка...'}</h1>
-            <p className="text-gray-500">@{user?.username?.toLowerCase()}</p>
-          </div>
-        </div>
+      {/* Модалка */}
+      <div className="fixed inset-0 z-[101] flex items-center justify-center p-4 pointer-events-none">
+        <div className="bg-white rounded-3xl shadow-2xl max-w-md w-full pointer-events-auto animate-scaleIn overflow-hidden">
+          {loading ? (
+            <div className="p-12 text-center text-gray-400 animate-fadeIn">
+              Загрузка...
+            </div>
+          ) : !user ? (
+            <div className="p-12 text-center text-gray-400 animate-fadeIn">
+              Пользователь не найден
+            </div>
+          ) : (
+            <>
+              {/* Верхняя часть с фоном */}
+              <div className="relative h-32 bg-gradient-to-br from-gray-100 to-gray-200">
+                <button
+                  onClick={onClose}
+                  className="absolute top-3 right-3 p-2 bg-white/80 backdrop-blur rounded-full hover:bg-white transition-all hover:scale-105 active:scale-95 z-10"
+                >
+                  <X size={16} />
+                </button>
+              </div>
 
-        <div className="flex gap-4">
-          <button
-            onClick={() => onStartChat(userId)}
-            className="bg-black text-white px-4 py-2 rounded-lg flex items-center gap-2"
-          >
-            <MessageSquare size={18} /> Написать
-          </button>
-          <button className="bg-gray-100 px-4 py-2 rounded-lg flex items-center gap-2">
-            <Phone size={18} /> Позвонить
-          </button>
+              {/* Аватар поверх */}
+              <div className="relative px-6 pb-6 -mt-16">
+                <div className="flex justify-center mb-4">
+                  <div className="p-1 bg-white rounded-full shadow-lg animate-scaleIn">
+                    <Avatar uri={user.avatar} username={user.username} size={120} />
+                  </div>
+                </div>
+
+                <div className="text-center">
+                  <h2 className="text-2xl font-bold mb-1 animate-fadeInUp" style={{ animationDelay: '100ms' }}>
+                    {user.username}
+                  </h2>
+                  <p className="text-gray-400 text-sm mb-4 animate-fadeInUp" style={{ animationDelay: '150ms' }}>
+                    #{user.id} · {user.role === 'admin' ? 'Администратор' : 'Пользователь'}
+                  </p>
+
+                  {user.bio && (
+                    <p className="text-gray-600 text-sm mb-6 max-w-sm mx-auto animate-fadeInUp" style={{ animationDelay: '200ms' }}>
+                      {user.bio}
+                    </p>
+                  )}
+
+                  <button
+                    onClick={() => onWrite(user)}
+                    className="inline-flex items-center gap-2 bg-black text-white px-8 py-3 rounded-xl font-semibold hover:bg-gray-800 transition-all duration-200 hover:scale-105 active:scale-95 animate-fadeInUp w-full justify-center"
+                    style={{ animationDelay: '250ms' }}
+                  >
+                    <MessageCircle size={18} />
+                    Написать сообщение
+                  </button>
+                </div>
+              </div>
+            </>
+          )}
         </div>
       </div>
-    </div>
+    </>
   );
 };

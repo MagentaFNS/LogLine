@@ -1,9 +1,10 @@
 import { useEffect, useState, useRef } from 'react';
-import { Search, Send, Paperclip, Smile, MoreVertical, Phone, Video, Info, Plus, X, ArrowLeft } from 'lucide-react';
+import { Send, Paperclip, Smile, MoreVertical, Phone, Video, Info, Plus, X, ArrowLeft } from 'lucide-react';
 import { useStore } from '../store/useStore';
 import { Avatar } from '../components/Avatar';
 import { TypingIndicator } from '../components/TypingIndicator';
 import { AnimatedMessage } from '../components/AnimatedMessage';
+import { UserSearch } from '../components/UserSearch';
 import { Chat, User } from '../types';
 
 export const ChatPage = () => {
@@ -16,14 +17,9 @@ export const ChatPage = () => {
     fetchChats,
     openChat,
     sendMessage,
-    createPrivateChat,
-    searchUsers,
   } = useStore();
 
   const [text, setText] = useState('');
-  const [searchQuery, setSearchQuery] = useState('');
-  const [searchResults, setSearchResults] = useState<User[]>([]);
-  const [showSearch, setShowSearch] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
   const [showChatOnMobile, setShowChatOnMobile] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -36,18 +32,6 @@ export const ChatPage = () => {
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, typingUsers]);
-
-  useEffect(() => {
-    if (!searchQuery.trim()) {
-      setSearchResults([]);
-      return;
-    }
-    const timer = setTimeout(async () => {
-      const users = await searchUsers(searchQuery);
-      setSearchResults(users);
-    }, 300);
-    return () => clearTimeout(timer);
-  }, [searchQuery]);
 
   const handleSend = () => {
     if (!text.trim()) return;
@@ -75,20 +59,6 @@ export const ChatPage = () => {
     typingTimerRef.current = setTimeout(() => {
       ws.send('typing:stop', { chat_id: currentChat.id });
     }, 2000);
-  };
-
-  const handleStartChat = async (user: User) => {
-    const chat = await createPrivateChat(user.id);
-    if (chat) {
-      setShowSearch(false);
-      setSearchQuery('');
-      setSearchResults([]);
-      const fullChat = useStore.getState().chats.find((c) => c.id === chat.id);
-      if (fullChat) {
-        openChat(fullChat);
-        setShowChatOnMobile(true);
-      }
-    }
   };
 
   const handleOpenChat = (chat: Chat) => {
@@ -121,62 +91,18 @@ export const ChatPage = () => {
         <div className="p-4 border-b border-gray-100">
           <div className="flex items-center justify-between mb-3">
             <h2 className="text-xl font-bold">Чаты</h2>
-            <button
-              onClick={() => setShowSearch(!showSearch)}
-              className="w-9 h-9 rounded-xl bg-black text-white flex items-center justify-center hover:bg-gray-800 transition-all duration-300 hover:scale-105 active:scale-95"
-            >
-              {showSearch ? <X size={18} /> : <Plus size={18} />}
-            </button>
           </div>
-
-          {showSearch ? (
-            <input
-              autoFocus
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Поиск людей по имени..."
-              className="w-full bg-gray-50 rounded-xl px-4 py-2 text-sm outline-none focus:ring-2 focus:ring-black transition-all animate-fadeIn"
-            />
-          ) : (
-            <div className="flex items-center gap-2 bg-gray-50 rounded-xl px-3 py-2 transition-all focus-within:ring-2 focus-within:ring-black">
-              <Search size={16} className="text-gray-400" />
-              <input
-                placeholder="Поиск по чатам"
-                className="bg-transparent outline-none flex-1 text-sm"
-              />
-            </div>
-          )}
+          <UserSearch placeholder="Поиск людей по имени..." />
         </div>
 
         <div className="flex-1 overflow-y-auto">
-          {showSearch && searchResults.length > 0 && (
-            <div className="animate-fadeIn">
-              <p className="px-4 py-2 text-xs text-gray-500 uppercase font-semibold">Люди</p>
-              {searchResults.map((user, i) => (
-                <button
-                  key={user.id}
-                  onClick={() => handleStartChat(user)}
-                  className="w-full flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition-all animate-fadeInUp"
-                  style={{ animationDelay: `${i * 50}ms` }}
-                >
-                  <Avatar uri={user.avatar} username={user.username} size={40} />
-                  <div className="flex-1 text-left">
-                    <p className="font-semibold text-sm">{user.username}</p>
-                    <p className="text-xs text-gray-500 truncate">{user.bio || 'нет описания'}</p>
-                  </div>
-                </button>
-              ))}
-            </div>
-          )}
-
-          {!showSearch && chats.length === 0 && (
+          {chats.length === 0 && (
             <div className="p-8 text-center text-gray-400 text-sm animate-fadeIn">
-              Нет чатов. Нажми <span className="font-bold">+</span> чтобы начать.
+              Нет чатов. Найди пользователя через поиск.
             </div>
           )}
 
-          {!showSearch && chats.map((chat, i) => (
+          {chats.map((chat, i) => (
             <button
               key={chat.id}
               onClick={() => handleOpenChat(chat)}
@@ -214,12 +140,12 @@ export const ChatPage = () => {
           <div className="flex-1 flex items-center justify-center text-gray-400">
             <div className="text-center animate-fadeIn">
               <p className="text-lg font-semibold mb-2">Выбери чат</p>
-              <p className="text-sm">Или найди пользователя через + слева</p>
+              <p className="text-sm">Или найди пользователя через поиск слева</p>
             </div>
           </div>
         ) : (
           <>
-            {/* Шапка чата с аватаром по центру */}
+            {/* Шапка чата */}
             <div className="p-4 border-b border-gray-100 flex items-center justify-between animate-fadeInDown">
               <div className="flex items-center gap-3">
                 <button
@@ -228,7 +154,7 @@ export const ChatPage = () => {
                 >
                   <ArrowLeft size={20} />
                 </button>
-                <div className="cursor-pointer transition-transform duration-300 hover:scale-105">
+                <div className="transition-transform duration-300 hover:scale-105">
                   <Avatar
                     uri={currentChat.peer?.avatar || currentChat.avatar}
                     username={currentChat.peer?.username || currentChat.title}
@@ -319,7 +245,6 @@ export const ChatPage = () => {
       {/* === ПРАВАЯ КОЛОНКА: ПРОФИЛЬ === */}
       {showProfile && currentChat?.peer && (
         <div className="w-[320px] bg-white rounded-2xl border border-gray-100 flex flex-col overflow-y-auto animate-slideInRight shadow-lg">
-          {/* Профиль с аватаром по центру */}
           <div className="p-6 text-center border-b border-gray-100 animate-fadeInDown">
             <div className="mx-auto mb-4 flex justify-center">
               <div className="transition-transform duration-500 hover:scale-110">

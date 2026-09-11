@@ -2,39 +2,80 @@
 @tailwind components;
 @tailwind utilities;
 
-@keyframes fadeInUp {
-  from { opacity: 0; transform: translateY(20px); }
-  to { opacity: 1; transform: translateY(0); }
+/* === Базовые стили === */
+body {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  background-color: #f5f5f7;
+  margin: 0;
+  color: #111;
+  -webkit-font-smoothing: antialiased;
+  font-size: 14px;
+  line-height: 1.4;
 }
 
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-thumb {
+  background: #ccc;
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #999;
+}
+
+/* === Анимации === */
 @keyframes fadeIn {
   from { opacity: 0; }
   to { opacity: 1; }
 }
-
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes fadeInDown {
+  from { opacity: 0; transform: translateY(-8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
 @keyframes slideInLeft {
-  from { opacity: 0; transform: translateX(-30px); }
+  from { opacity: 0; transform: translateX(-15px); }
   to { opacity: 1; transform: translateX(0); }
 }
-
 @keyframes slideInRight {
-  from { opacity: 0; transform: translateX(30px); }
+  from { opacity: 0; transform: translateX(15px); }
   to { opacity: 1; transform: translateX(0); }
 }
-
-body {
-  font-family: 'Inter', sans-serif;
-  background-color: #f4f4f4;
-  margin: 0;
-  color: #111;
-  -webkit-font-smoothing: antialiased;
+@keyframes scaleIn {
+  from { opacity: 0; transform: scale(0.96); }
+  to { opacity: 1; transform: scale(1); }
+}
+@keyframes messageIn {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
-::-webkit-scrollbar { width: 6px; }
-::-webkit-scrollbar-thumb { background: #ddd; border-radius: 10px; }
-::-webkit-scrollbar-thumb:hover { background: #999; }
+/* Utility — с короткой длительностью для desktop */
+.animate-fadeIn { animation: fadeIn 0.15s ease-out both; }
+.animate-fadeInUp { animation: fadeInUp 0.2s ease-out both; }
+.animate-fadeInDown { animation: fadeInDown 0.2s ease-out both; }
+.animate-slideInLeft { animation: slideInLeft 0.2s ease-out both; }
+.animate-slideInRight { animation: slideInRight 0.2s ease-out both; }
+.animate-scaleIn { animation: scaleIn 0.15s ease-out both; }
+.animate-messageIn { animation: messageIn 0.1s ease-out both; }
 
-.fade-in-up { animation: fadeInUp 0.4s ease-out both; }
-.fade-in { animation: fadeIn 0.3s ease-out both; }
-.slide-in-left { animation: slideInLeft 0.4s ease-out both; }
-.slide-in-right { animation: slideInRight 0.4s ease-out both; }
+/* === Утилиты === */
+.fade-in-up {
+  animation: fadeInUp 0.3s ease-out both;
+}
+
+/* Убираем тяжелые тени на десктопе */
+.shadow-2xl {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08) !important;
+}
+
+/* Стекло — без blur для производительности */
+.glass {
+  background: rgba(255, 255, 255, 0.95);
+  border: 1px solid rgba(0, 0, 0, 0.05);
+}

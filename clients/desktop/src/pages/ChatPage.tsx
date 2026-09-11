@@ -1,140 +1,310 @@
 import { useEffect, useState, useRef } from 'react';
-import { io } from 'socket.io-client';
-import { Send } from 'lucide-react';
+import { Send, Paperclip, Smile, MoreVertical, Phone, Video, Info, Plus, X, ArrowLeft } from 'lucide-react';
 import { useStore } from '../store/useStore';
-import axios from 'axios';
+import { Avatar } from '../components/Avatar';
+import { TypingIndicator } from '../components/TypingIndicator';
+import { AnimatedMessage } from '../components/AnimatedMessage';
+import { UserSearch } from '../components/UserSearch';
+import { Chat, User } from '../types';
 
 export const ChatPage = () => {
-  const { currentUser, token } = useStore();
-  const [socket, setSocket] = useState<any>(null);
-  const [messages, setMessages] = useState<any[]>([]);
+  const {
+    currentUser,
+    chats,
+    currentChat,
+    messages,
+    typingUsers,
+    fetchChats,
+    openChat,
+    sendMessage,
+  } = useStore();
+
   const [text, setText] = useState('');
-  const [selectedUser, setSelectedUser] = useState<any>(null);
-  const [userList, setUserList] = useState<any[]>([]);
+  const [showProfile, setShowProfile] = useState(false);
+  const [showChatOnMobile, setShowChatOnMobile] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const typingTimerRef = useRef<any>(null);
 
   useEffect(() => {
-    const fetchUsers = async () => {
-      const res = await axios.get('http://localhost:8080/api/admin/users', {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      setUserList(res.data);
-    };
-    fetchUsers();
-
-    // Подключение zum Socket
-    const newSocket = io('http://localhost:8080');
-    setSocket(newSocket);
-
-    // Empfange Nachricht
-    newSocket.on('message', (msg: any) => {
-      setMessages(prev => [...prev, msg]);
-    });
-
-    return () => newSocket.close();
-  }, [token]);
+    fetchChats();
+  }, []);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages]);
+  }, [messages, typingUsers]);
 
-  const fetchMessages = async (id: number) => {
-    const res = await axios.get(`http://localhost:8080/api/chat/${id}`, {
-      headers: { Authorization: `Bearer ${token}` }
-    });
-    setMessages(res.data);
-  };
-
-  const openChat = async (user: any) => {
-    setSelectedUser(user);
-    await fetchMessages(user.id);
-  };
-
-  const sendMessage = () => {
-    if (text.trim() && socket) {
-      socket.emit('message', {
-        user_id: currentUser?.id,
-        username: currentUser?.username,
-        text: text.trim()
-      });
-      setText('');
+  const handleSend = () => {
+    if (!text.trim()) return;
+    sendMessage(text);
+    setText('');
+    const ws = useStore.getState().ws;
+    if (ws && currentChat) {
+      ws.send('typing:stop', { chat_id: currentChat.id });
     }
   };
 
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleSend();
+    }
+  };
+
+  const handleTyping = (value: string) => {
+    setText(value);
+    const ws = useStore.getState().ws;
+    if (!ws || !currentChat) return;
+    ws.send('typing:start', { chat_id: currentChat.id });
+    if (typingTimerRef.current) clearTimeout(typingTimerRef.current);
+    typingTimerRef.current = setTimeout(() => {
+      ws.send('typing:stop', { chat_id: currentChat.id });
+    }, 2000);
+  };
+
+  const handleOpenChat = (chat: Chat) => {
+    openChat(chat);
+    setShowChatOnMobile(true);
+  };
+
+  const formatTime = (iso: string) => {
+    const d = new Date(iso);
+    return d.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
+  };
+
+  const formatLastSeen = (iso?: string) => {
+    if (!iso || iso.startsWith('0001')) return 'недавно';
+    const d = new Date(iso);
+    const diff = Date.now() - d.getTime();
+    const mins = Math.floor(diff / 60000);
+    if (mins < 1) return 'в сети';
+    if (mins < 60) return `был(а) ${mins} мин назад`;
+    if (mins < 1440) return `был(а) ${Math.floor(mins / 60)} ч назад`;
+    return `был(а) ${Math.floor(mins / 1440)} дн назад`;
+  };
+
+  const isTyping = typingUsers.size > 0;
+
   return (
-    <div className="h-full flex p-8">
-      <div className="w-[350px] bg-white border border-gray-100 rounded-2xl mr-4 flex flex-col">
-        <div className="p-4 border-b">
-          <h2 className="font-bold text-lg mb-3">Чаты</h2>
-          <div className="flex items-center gap-2 bg-gray-100 rounded-xl p-2">
-            <input placeholder="Поиск по чатам и участникам" className="bg-transparent outline-none flex-1 text-sm" />
+    <div className="h-full flex p-4 gap-4 bg-[#f5f5f7] overflow-hidden">
+      {/* === ЛЕВАЯ КОЛОНКА: СПИСОК ЧАТОВ === */}
+      <div className={`w-[340px] bg-white rounded-2xl border border-gray-100 flex flex-col overflow-hidden animate-slideInLeft shadow-sm ${showChatOnMobile ? 'hidden md:flex' : 'flex'}`}>
+        <div className="p-4 border-b border-gray-100">
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="text-xl font-bold">Чаты</h2>
           </div>
+          <UserSearch placeholder="Поиск людей по имени..." />
         </div>
-        <div className="flex-1 overflow-y-auto p-2">
-          {userList.map((user) => (
+
+        <div className="flex-1 overflow-y-auto">
+          {chats.length === 0 && (
+            <div className="p-8 text-center text-gray-400 text-sm animate-fadeIn">
+              Нет чатов. Найди пользователя через поиск.
+            </div>
+          )}
+
+          {chats.map((chat, i) => (
             <button
-              key={user.id}
-              onClick={() => openChat(user)}
-              className={`w-full flex items-center gap-3 p-3 rounded-xl mb-1 transition ${
-                selectedUser?.id === user.id ? 'bg-black text-white' : 'hover:bg-gray-100'
+              key={chat.id}
+              onClick={() => handleOpenChat(chat)}
+              className={`w-full flex items-center gap-3 px-4 py-3 transition-all duration-300 hover:bg-gray-50 animate-fadeInUp ${
+                currentChat?.id === chat.id ? 'bg-gray-100' : ''
               }`}
+              style={{ animationDelay: `${i * 50}ms` }}
             >
-              <div className="w-10 h-10 rounded-full bg-gray-300 overflow-hidden">
-                <img src={user.avatar || 'https://i.pravatar.cc/100'} className="w-full h-full object-cover" />
-              </div>
-              <div className="flex-1 text-left">
-                <p className="font-bold text-sm">{user.username}</p>
-                <p className="text-xs">в сети</p>
+              <Avatar
+                uri={chat.peer?.avatar || chat.avatar}
+                username={chat.peer?.username || chat.title}
+                size={48}
+              />
+              <div className="flex-1 text-left min-w-0">
+                <div className="flex items-center justify-between">
+                  <p className="font-semibold text-sm truncate">
+                    {chat.peer?.username || chat.title || 'Чат'}
+                  </p>
+                  <span className="text-xs text-gray-400 shrink-0 ml-2">
+                    {formatTime(chat.updated_at)}
+                  </span>
+                </div>
+                <p className="text-xs text-gray-500 truncate">
+                  {chat.peer ? formatLastSeen(chat.peer.last_seen) : 'группа'}
+                </p>
               </div>
             </button>
           ))}
         </div>
       </div>
 
-      <div className="flex-1 bg-white border border-gray-100 rounded-2xl flex flex-col">
-        <div className="p-4 border-b flex justify-between items-center">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full bg-gray-200 overflow-hidden">
-              <img src={selectedUser?.avatar || 'https://i.pravatar.cc/100'} className="w-full h-full object-cover" />
-            </div>
-            <div>
-              <h3 className="font-bold">{selectedUser?.username || 'Чат'}</h3>
-              <p className="text-xs text-green-500">в сети</p>
+      {/* === ЦЕНТР: ОКНО ЧАТА === */}
+      <div className={`flex-1 bg-white rounded-2xl border border-gray-100 flex flex-col overflow-hidden animate-scaleIn shadow-sm ${showChatOnMobile ? 'flex' : 'hidden md:flex'}`}>
+        {!currentChat ? (
+          <div className="flex-1 flex items-center justify-center text-gray-400">
+            <div className="text-center animate-fadeIn">
+              <p className="text-lg font-semibold mb-2">Выбери чат</p>
+              <p className="text-sm">Или найди пользователя через поиск слева</p>
             </div>
           </div>
-        </div>
-
-        <div className="flex-1 p-6 overflow-y-auto space-y-4">
-          {messages.length === 0 && (
-            <div className="h-full flex items-center justify-center text-gray-400">
-              Нет сообщений. Напишите первым!
-            </div>
-          )}
-          {messages.map((msg) => (
-            <div key={msg.id} className={`flex ${msg.username === currentUser?.username ? 'justify-end' : 'justify-start'}`}>
-              <div className={`max-w-[70%] rounded-2xl p-4 ${
-                msg.username === currentUser?.username ? 'bg-black text-white rounded-br-sm' : 'bg-gray-100 text-gray-800 rounded-bl-sm'
-              }`}>
-                <p className="text-xs font-bold mb-1 opacity-70">{msg.username}</p>
-                <p>{msg.text}</p>
+        ) : (
+          <>
+            {/* Шапка чата */}
+            <div className="p-4 border-b border-gray-100 flex items-center justify-between animate-fadeInDown">
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={() => setShowChatOnMobile(false)}
+                  className="md:hidden p-2 hover:bg-gray-100 rounded-lg transition-all"
+                >
+                  <ArrowLeft size={20} />
+                </button>
+                <div className="transition-transform duration-300 hover:scale-105">
+                  <Avatar
+                    uri={currentChat.peer?.avatar || currentChat.avatar}
+                    username={currentChat.peer?.username || currentChat.title}
+                    size={44}
+                  />
+                </div>
+                <div>
+                  <h3 className="font-bold">{currentChat.peer?.username || currentChat.title}</h3>
+                  <p className={`text-xs transition-colors duration-300 ${isTyping ? 'text-blue-500' : 'text-green-500'}`}>
+                    {isTyping ? 'печатает...' : formatLastSeen(currentChat.peer?.last_seen)}
+                  </p>
+                </div>
+              </div>
+              <div className="flex gap-1">
+                <button className="p-2 hover:bg-gray-100 rounded-lg transition-all duration-200 hover:scale-105 active:scale-95">
+                  <Phone size={18} />
+                </button>
+                <button className="p-2 hover:bg-gray-100 rounded-lg transition-all duration-200 hover:scale-105 active:scale-95">
+                  <Video size={18} />
+                </button>
+                <button
+                  onClick={() => setShowProfile(!showProfile)}
+                  className={`p-2 rounded-lg transition-all duration-200 hover:scale-105 active:scale-95 ${
+                    showProfile ? 'bg-black text-white' : 'hover:bg-gray-100'
+                  }`}
+                >
+                  <Info size={18} />
+                </button>
+                <button className="p-2 hover:bg-gray-100 rounded-lg transition-all duration-200 hover:scale-105 active:scale-95">
+                  <MoreVertical size={18} />
+                </button>
               </div>
             </div>
-          ))}
-          <div ref={messagesEndRef} />
-        </div>
 
-        <div className="p-4 border-t flex gap-3 items-center">
-          <input
-            type="text"
-            value={text}
-            onChange={e => setText(e.target.value)}
-            onKeyDown={e => e.key === 'Enter' && sendMessage()}
-            placeholder="Напишите сообщение..."
-            className="flex-1 bg-gray-50 rounded-xl px-4 py-3 outline-none"
-          />
-          <button onClick={sendMessage} className="bg-black text-white p-3 rounded-xl"><Send size={18} /></button>
-        </div>
+            {/* Сообщения */}
+            <div className="flex-1 p-6 overflow-y-auto space-y-3">
+              {messages.length === 0 && (
+                <div className="text-center text-gray-400 text-sm py-8 animate-fadeIn">
+                  Нет сообщений. Напишите первым!
+                </div>
+              )}
+              {messages.map((msg) => (
+                <AnimatedMessage
+                  key={msg.id}
+                  msg={msg}
+                  isMine={msg.user_id === currentUser?.id}
+                  formatTime={formatTime}
+                />
+              ))}
+              {isTyping && (
+                <div className="flex justify-start animate-fadeIn">
+                  <div className="bg-gray-100 rounded-2xl rounded-bl-md">
+                    <TypingIndicator />
+                  </div>
+                </div>
+              )}
+              <div ref={messagesEndRef} />
+            </div>
+
+            {/* Поле ввода */}
+            <div className="p-4 border-t border-gray-100 flex items-center gap-3 animate-fadeInUp">
+              <button className="p-2 hover:bg-gray-100 rounded-xl transition-all duration-200 hover:scale-110 active:scale-95">
+                <Paperclip size={20} className="text-gray-500" />
+              </button>
+              <input
+                type="text"
+                value={text}
+                onChange={(e) => handleTyping(e.target.value)}
+                onKeyDown={handleKeyDown}
+                placeholder="Напишите сообщение..."
+                className="flex-1 bg-gray-50 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-black transition-all"
+              />
+              <button className="p-2 hover:bg-gray-100 rounded-xl transition-all duration-200 hover:scale-110 active:scale-95">
+                <Smile size={20} className="text-gray-500" />
+              </button>
+              <button
+                onClick={handleSend}
+                disabled={!text.trim()}
+                className="w-10 h-10 rounded-xl bg-black text-white flex items-center justify-center disabled:opacity-30 hover:bg-gray-800 transition-all duration-200 hover:scale-110 active:scale-95"
+              >
+                <Send size={18} />
+              </button>
+            </div>
+          </>
+        )}
       </div>
+
+      {/* === ПРАВАЯ КОЛОНКА: ПРОФИЛЬ === */}
+      {showProfile && currentChat?.peer && (
+        <div className="w-[320px] bg-white rounded-2xl border border-gray-100 flex flex-col overflow-y-auto animate-slideInRight shadow-lg">
+          <div className="p-6 text-center border-b border-gray-100 animate-fadeInDown">
+            <div className="mx-auto mb-4 flex justify-center">
+              <div className="transition-transform duration-500 hover:scale-110">
+                <Avatar
+                  uri={currentChat.peer.avatar}
+                  username={currentChat.peer.username}
+                  size={96}
+                />
+              </div>
+            </div>
+            <h3 className="font-bold text-lg animate-fadeInUp" style={{ animationDelay: '100ms' }}>
+              {currentChat.peer.username}
+            </h3>
+            <p className="text-xs text-gray-500 mb-4 animate-fadeInUp" style={{ animationDelay: '150ms' }}>
+              {formatLastSeen(currentChat.peer.last_seen)}
+            </p>
+            <div className="flex justify-center gap-2 animate-fadeInUp" style={{ animationDelay: '200ms' }}>
+              <button className="flex flex-col items-center gap-1 p-2 rounded-lg hover:bg-gray-50 w-16 transition-all duration-200 hover:scale-105 active:scale-95">
+                <Phone size={18} />
+                <span className="text-[10px]">Позвонить</span>
+              </button>
+              <button className="flex flex-col items-center gap-1 p-2 rounded-lg hover:bg-gray-50 w-16 transition-all duration-200 hover:scale-105 active:scale-95">
+                <Video size={18} />
+                <span className="text-[10px]">Видео</span>
+              </button>
+              <button className="flex flex-col items-center gap-1 p-2 rounded-lg hover:bg-gray-50 w-16 transition-all duration-200 hover:scale-105 active:scale-95">
+                <Info size={18} />
+                <span className="text-[10px]">Профиль</span>
+              </button>
+              <button className="flex flex-col items-center gap-1 p-2 rounded-lg hover:bg-gray-50 w-16 transition-all duration-200 hover:scale-105 active:scale-95">
+                <MoreVertical size={18} />
+                <span className="text-[10px]">Ещё</span>
+              </button>
+            </div>
+          </div>
+
+          {currentChat.peer.bio && (
+            <div className="p-4 border-b border-gray-100 animate-fadeInUp" style={{ animationDelay: '250ms' }}>
+              <p className="text-xs font-semibold text-gray-500 uppercase mb-2">О себе</p>
+              <p className="text-sm">{currentChat.peer.bio}</p>
+            </div>
+          )}
+
+          <div className="p-4 border-b border-gray-100 animate-fadeInUp" style={{ animationDelay: '300ms' }}>
+            <div className="flex items-center justify-between mb-3">
+              <p className="text-xs font-semibold text-gray-500 uppercase">Файлы и ссылки</p>
+              <button className="text-xs text-gray-400 hover:text-black transition-colors">Смотреть все</button>
+            </div>
+            <p className="text-sm text-gray-400">Пока нет файлов</p>
+          </div>
+
+          <div className="p-4 animate-fadeInUp" style={{ animationDelay: '350ms' }}>
+            <div className="flex items-center justify-between mb-3">
+              <p className="text-xs font-semibold text-gray-500 uppercase">Общие заметки</p>
+              <button className="text-xs text-gray-400 hover:text-black transition-colors">Смотреть все</button>
+            </div>
+            <p className="text-sm text-gray-400">Пока нет заметок</p>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

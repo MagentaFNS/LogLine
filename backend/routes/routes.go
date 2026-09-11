@@ -12,6 +12,10 @@ import (
 func SetupRouter(hub *ws.Hub) *gin.Engine {
 	r := gin.Default()
 
+	// WebSocket регистрируется ДО CORS, иначе CORS обрезает заголовки Upgrade
+	r.GET("/api/ws", controllers.HandleWebSocket(hub))
+
+	// CORS для остальных запросов
 	config := cors.DefaultConfig()
 	config.AllowAllOrigins = true
 	config.AllowCredentials = false
@@ -22,14 +26,9 @@ func SetupRouter(hub *ws.Hub) *gin.Engine {
 
 	api := r.Group("/api")
 	{
-		// Публичные
 		api.POST("/register", controllers.Register)
 		api.POST("/login", controllers.Login)
 
-		// WebSocket (токен через query-параметр)
-		api.GET("/ws", controllers.HandleWebSocket(hub))
-
-		// Защищённые
 		protected := api.Group("")
 		protected.Use(middleware.AuthMiddleware())
 		{
@@ -38,16 +37,13 @@ func SetupRouter(hub *ws.Hub) *gin.Engine {
 			protected.POST("/upload/avatar", controllers.UploadAvatar)
 			protected.POST("/upload/post-image", controllers.UploadPostImage)
 
-			// === ЧАТЫ ===
 			protected.POST("/chats", controllers.CreateOrGetChat)
 			protected.GET("/chats", controllers.GetChats)
 			protected.GET("/chats/:id/messages", controllers.GetMessages)
 
-			// === ПОЛЬЗОВАТЕЛИ ===
 			protected.GET("/users/search", controllers.SearchUsers)
 			protected.GET("/users/:id", controllers.GetUserByID)
 
-			// === ЗАМЕТКИ / ПОСТЫ / РАБОТЫ ===
 			protected.GET("/notes", controllers.GetNotes)
 			protected.POST("/notes", controllers.CreateNote)
 			protected.DELETE("/notes/:id", controllers.DeleteNote)
@@ -67,7 +63,6 @@ func SetupRouter(hub *ws.Hub) *gin.Engine {
 			protected.GET("/notifications", controllers.GetNotifications)
 			protected.POST("/notifications/read-all", controllers.MarkAllNotificationsRead)
 
-			// === АДМИН ===
 			protected.GET("/admin/users", controllers.GetUsers)
 			protected.GET("/admin/stats", controllers.GetStats)
 		}

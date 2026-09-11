@@ -23,8 +23,11 @@ var upgrader = websocket.Upgrader{
 
 // ============== WEBSOCKET ==============
 
+// HandleWebSocket — точка входа для WS
+// Подключение: ws://host/api/ws?token=JWT
 func HandleWebSocket(hub *ws.Hub) gin.HandlerFunc {
 	return func(c *gin.Context) {
+		// 1. Проверяем токен
 		token := c.Query("token")
 		if token == "" {
 			c.JSON(http.StatusUnauthorized, gin.H{"error": "нет токена"})
@@ -36,12 +39,14 @@ func HandleWebSocket(hub *ws.Hub) gin.HandlerFunc {
 			return
 		}
 
+		// 2. Апгрейдим соединение
 		conn, err := upgrader.Upgrade(c.Writer, c.Request, nil)
 		if err != nil {
-			log.Printf("❌ WS upgrade error: %v", err)
+			log.Printf("WS upgrade error: %v", err)
 			return
 		}
 
+		// 3. Создаём клиента
 		client := &ws.Client{
 			Hub:    hub,
 			Conn:   conn,
@@ -49,42 +54,51 @@ func HandleWebSocket(hub *ws.Hub) gin.HandlerFunc {
 			UserID: userID,
 		}
 
+		// 4. Получаем список чатов пользователя
 		var chatIDs []uint
 		database.DB.Model(&models.ChatMember{}).
 			Where("user_id = ?", userID).
 			Pluck("chat_id", &chatIDs)
 
-		log.Printf("🔵 [WS] userID=%d подписывается на чаты: %v", userID, chatIDs)
-
+		// 5. Регистрируем в хабе (добавляет в комнаты)
 		hub.Register(client, chatIDs)
 
+		// 6. Обновляем LastSeen
 		database.DB.Model(&models.User{}).
 			Where("id = ?", userID).
 			Update("last_seen", time.Now())
 
+		// 7. Уведомляем всех "presence:online"
+		hub.BroadcastToChat(0, ws.NewEvent("presence:online", gin.H{
+			"user_id": userID,
+		}))
+
+		// 8. Запускаем горутины
 		go client.WritePump()
-		client.ReadPump()
+		client.ReadPump() // блокирующий вызов
 
-		log.Printf("🔴 [WS] userID=%d отключён", userID)
+		// 9. При отключении — обновляем LastSeen
 		database.DB.Model(&models.User{}).
 			Where("id = ?", userID).
 			Update("last_seen", time.Now())
+
+		hub.BroadcastToChat(0, ws.NewEvent("presence:offline", gin.H{
+			"user_id":  userID,
+			"last_seen": time.Now(),
+		}))
 	}
 }
 
 // ============== HANDLE INCOMING EVENTS ==============
 
+// SetupHubCallbacks — подключаем обработчики событий из хаба
 func SetupHubCallbacks(hub *ws.Hub) {
 	hub.OnMessage = func(userID, _ uint, raw []byte) {
-		log.Printf("🎯 [OnMessage] userID=%d, raw=%s", userID, string(raw))
-
 		var msg ws.IncomingMessage
 		if err := json.Unmarshal(raw, &msg); err != nil {
-			log.Printf("❌ [OnMessage] unmarshal error: %v", err)
+			log.Printf("WS unmarshal error: %v", err)
 			return
 		}
-
-		log.Printf("🎯 [OnMessage] type=%q, chatID=%d", msg.Type, msg.ChatID)
 
 		switch msg.Type {
 		case "message:send":
@@ -95,34 +109,23 @@ func SetupHubCallbacks(hub *ws.Hub) {
 			handleTyping(hub, userID, msg.ChatID, false)
 		case "message:read":
 			handleReadMessage(hub, userID, msg.ChatID)
-		default:
-			log.Printf("⚠️ [OnMessage] неизвестный тип: %q", msg.Type)
 		}
 	}
 }
 
 func handleSendMessage(hub *ws.Hub, userID uint, msg ws.IncomingMessage) {
-	log.Printf("📩 [handleSendMessage] userID=%d, chatID=%d, content=%q",
-		userID, msg.ChatID, msg.Content)
-
-	if msg.ChatID == 0 {
-		log.Println("❌ [handleSendMessage] chatID = 0")
-		return
-	}
-	if msg.Content == "" {
-		log.Println("❌ [handleSendMessage] content пустой")
+	if msg.ChatID == 0 || msg.Content == "" {
 		return
 	}
 
+	// Проверяем, что пользователь — участник чата
 	var member models.ChatMember
 	if err := database.DB.Where("chat_id = ? AND user_id = ?", msg.ChatID, userID).
 		First(&member).Error; err != nil {
-		log.Printf("❌ [handleSendMessage] user %d не в чате %d: %v", userID, msg.ChatID, err)
 		return
 	}
 
-	log.Printf("✅ [handleSendMessage] user %d в чате %d", userID, msg.ChatID)
-
+	// Создаём сообщение
 	message := models.Message{
 		ChatID:      msg.ChatID,
 		UserID:      userID,
@@ -131,15 +134,13 @@ func handleSendMessage(hub *ws.Hub, userID uint, msg ws.IncomingMessage) {
 		ReplyToID:   msg.ReplyToID,
 		ClientMsgID: msg.ClientMsgID,
 	}
-	if err := database.DB.Create(&message).Error; err != nil {
-		log.Printf("❌ [handleSendMessage] create error: %v", err)
-		return
-	}
-	log.Printf("✅ [handleSendMessage] сообщение id=%d создано", message.ID)
+	database.DB.Create(&message)
 
+	// Загружаем данные пользователя
 	var user models.User
 	database.DB.First(&user, userID)
 
+	// Формируем ответ
 	payload := gin.H{
 		"id":            message.ID,
 		"chat_id":       message.ChatID,
@@ -155,7 +156,7 @@ func handleSendMessage(hub *ws.Hub, userID uint, msg ws.IncomingMessage) {
 		"created_at":    message.CreatedAt,
 	}
 
-	log.Printf("📤 [handleSendMessage] broadcasting в room %d", msg.ChatID)
+	// Рассылаем всем в комнате
 	hub.BroadcastToChat(msg.ChatID, ws.NewEvent("message:new", payload))
 }
 
@@ -164,7 +165,6 @@ func handleTyping(hub *ws.Hub, userID, chatID uint, isTyping bool) {
 	if isTyping {
 		eventType = "typing:start"
 	}
-	log.Printf("⌨️ [handleTyping] %s от userID=%d в chatID=%d", eventType, userID, chatID)
 	hub.BroadcastToChat(chatID, ws.NewEvent(eventType, gin.H{
 		"user_id": userID,
 		"chat_id": chatID,
@@ -172,14 +172,21 @@ func handleTyping(hub *ws.Hub, userID, chatID uint, isTyping bool) {
 }
 
 func handleReadMessage(hub *ws.Hub, userID, chatID uint) {
-	log.Printf("👁 [handleReadMessage] userID=%d в chatID=%d", userID, chatID)
 	database.DB.Model(&models.ChatMember{}).
 		Where("chat_id = ? AND user_id = ?", chatID, userID).
 		Update("last_read_at", time.Now())
+
+	hub.BroadcastToChat(chatID, ws.NewEvent("message:read", gin.H{
+		"user_id": userID,
+		"chat_id": chatID,
+		"read_at": time.Now(),
+	}))
 }
 
 // ============== REST API ==============
 
+// CreateOrGetChat — создать или получить личный чат с пользователем
+// POST /api/chats { "user_id": 2 }
 func CreateOrGetChat(c *gin.Context) {
 	currentUserID := c.GetUint("userID")
 
@@ -196,6 +203,7 @@ func CreateOrGetChat(c *gin.Context) {
 		return
 	}
 
+	// Проверяем, что оба пользователя существуют
 	var u1, u2 models.User
 	if database.DB.First(&u1, currentUserID).Error != nil ||
 		database.DB.First(&u2, input.UserID).Error != nil {
@@ -203,6 +211,7 @@ func CreateOrGetChat(c *gin.Context) {
 		return
 	}
 
+	// Ищем существующий личный чат
 	var existingChat models.Chat
 	err := database.DB.
 		Joins("JOIN chat_members cm1 ON cm1.chat_id = chats.id AND cm1.user_id = ?", currentUserID).
@@ -215,18 +224,22 @@ func CreateOrGetChat(c *gin.Context) {
 		return
 	}
 
+	// Создаём новый чат
 	chat := models.Chat{
 		Type:      "private",
 		CreatedBy: currentUserID,
 	}
 	database.DB.Create(&chat)
 
+	// Добавляем участников
 	database.DB.Create(&models.ChatMember{ChatID: chat.ID, UserID: currentUserID})
 	database.DB.Create(&models.ChatMember{ChatID: chat.ID, UserID: input.UserID})
 
 	c.JSON(200, chat)
 }
 
+// GetChats — список моих чатов
+// GET /api/chats
 func GetChats(c *gin.Context) {
 	userID := c.GetUint("userID")
 
@@ -237,6 +250,7 @@ func GetChats(c *gin.Context) {
 		Order("chats.updated_at DESC").
 		Find(&chats)
 
+	// Для каждого чата добавляем данные собеседника
 	result := []gin.H{}
 	for _, chat := range chats {
 		item := gin.H{
@@ -248,6 +262,7 @@ func GetChats(c *gin.Context) {
 			"updated_at": chat.UpdatedAt,
 		}
 
+		// Для личного чата — берём собеседника
 		if chat.Type == "private" {
 			var peer models.User
 			database.DB.
@@ -256,10 +271,9 @@ func GetChats(c *gin.Context) {
 				First(&peer)
 
 			item["peer"] = gin.H{
-				"id":        peer.ID,
-				"username":  peer.Username,
-				"avatar":    peer.Avatar,
-				"bio":       peer.Bio,
+				"id":       peer.ID,
+				"username": peer.Username,
+				"avatar":   peer.Avatar,
 				"last_seen": peer.LastSeen,
 			}
 		}
@@ -270,10 +284,13 @@ func GetChats(c *gin.Context) {
 	c.JSON(200, result)
 }
 
+// GetMessages — история сообщений чата
+// GET /api/chats/:id/messages?limit=50&before=123
 func GetMessages(c *gin.Context) {
 	userID := c.GetUint("userID")
 	chatID, _ := strconv.ParseUint(c.Param("id"), 10, 64)
 
+	// Проверяем, что пользователь — участник чата
 	var member models.ChatMember
 	if err := database.DB.Where("chat_id = ? AND user_id = ?", chatID, userID).
 		First(&member).Error; err != nil {
@@ -282,11 +299,19 @@ func GetMessages(c *gin.Context) {
 	}
 
 	var messages []models.Message
-	database.DB.Where("chat_id = ?", chatID).
-		Order("created_at ASC").
-		Limit(100).
-		Find(&messages)
+	query := database.DB.Where("chat_id = ?", chatID).
+		Order("created_at DESC").
+		Limit(100)
 
+	if before := c.Query("before"); before != "" {
+		if beforeID, err := strconv.ParseUint(before, 10, 64); err == nil {
+			query = query.Where("id < ?", beforeID)
+		}
+	}
+
+	query.Find(&messages)
+
+	// Обогащаем данными пользователей
 	enriched := []gin.H{}
 	for _, m := range messages {
 		var u models.User
@@ -309,9 +334,16 @@ func GetMessages(c *gin.Context) {
 		})
 	}
 
+	// Разворачиваем (старые сверху)
+	for i, j := 0, len(enriched)-1; i < j; i, j = i+1, j-1 {
+		enriched[i], enriched[j] = enriched[j], enriched[i]
+	}
+
 	c.JSON(200, enriched)
 }
 
+// SearchUsers — поиск пользователей по username
+// GET /api/users/search?q=mag
 func SearchUsers(c *gin.Context) {
 	currentUserID := c.GetUint("userID")
 	q := c.Query("q")
@@ -323,7 +355,7 @@ func SearchUsers(c *gin.Context) {
 
 	var users []models.User
 	database.DB.
-		Where("(username ILIKE ? OR bio ILIKE ?) AND id != ?", "%"+q+"%", "%"+q+"%", currentUserID).
+		Where("username ILIKE ? AND id != ?", "%"+q+"%", currentUserID).
 		Limit(20).
 		Find(&users)
 
@@ -341,6 +373,8 @@ func SearchUsers(c *gin.Context) {
 	c.JSON(200, result)
 }
 
+// GetUserByID — публичный профиль пользователя
+// GET /api/users/:id
 func GetUserByID(c *gin.Context) {
 	id, _ := strconv.ParseUint(c.Param("id"), 10, 64)
 
@@ -351,12 +385,12 @@ func GetUserByID(c *gin.Context) {
 	}
 
 	c.JSON(200, gin.H{
-		"id":         user.ID,
-		"username":   user.Username,
-		"avatar":     user.Avatar,
-		"bio":        user.Bio,
-		"role":       user.Role,
-		"last_seen":  user.LastSeen,
+		"id":        user.ID,
+		"username":  user.Username,
+		"avatar":    user.Avatar,
+		"bio":       user.Bio,
+		"role":      user.Role,
+		"last_seen": user.LastSeen,
 		"created_at": user.CreatedAt,
 	})
 }

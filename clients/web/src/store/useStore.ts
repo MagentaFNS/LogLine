@@ -27,12 +27,23 @@ interface State {
   unreadChats: number;
   clearChatNotification: (chatId: number) => void;
 
+  // Toasts
+  toasts: Array<{ id: string; text: string; type: 'info' | 'success' | 'error' }>;
+  addToast: (text: string, type?: 'info' | 'success' | 'error') => void;
+  removeToast: (id: string) => void;
+
+  // Users (для Знакомств)
+  users: User[];
+  usersTotal: number;
+  usersOffset: number;
+  fetchUsers: (reset?: boolean, category?: string) => Promise<void>;
+
   // Actions
   login: (username: string, password: string) => Promise<void>;
   register: (username: string, password: string) => Promise<void>;
   logout: () => void;
   updateAvatar: (file: File) => Promise<void>;
-  updateProfile: (username: string, bio: string) => Promise<void>;
+  updateProfile: (username: string, bio: string, category: string) => Promise<void>;
 
   fetchNotes: () => Promise<void>;
   createNote: (title: string, content: string) => Promise<void>;
@@ -77,6 +88,12 @@ export const useStore = create<State>((set, get) => ({
 
   chatNotifications: {},
   unreadChats: 0,
+
+  users: [],
+  usersTotal: 0,
+  usersOffset: 0,
+
+  toasts: [],
 
   // === AUTH ===
   login: async (username, password) => {
@@ -127,11 +144,16 @@ export const useStore = create<State>((set, get) => ({
     }));
   },
 
-  updateProfile: async (username, bio) => {
-    const res = await api.post('/update-profile', { username, bio });
+  updateProfile: async (username, bio, category) => {
+    const res = await api.post('/update-profile', { username, bio, category });
     set((state) => ({
       currentUser: state.currentUser
-        ? { ...state.currentUser, username: res.data.username, bio: res.data.bio }
+        ? {
+            ...state.currentUser,
+            username: res.data.username,
+            bio: res.data.bio,
+            category: res.data.category,
+          }
         : null,
     }));
   },
@@ -198,6 +220,38 @@ export const useStore = create<State>((set, get) => ({
       const total = Object.values(newNotifications).reduce((a, b) => a + b, 0);
       return { chatNotifications: newNotifications, unreadChats: total };
     });
+  },
+
+  addToast: (text, type = 'info') => {
+    const id = Date.now().toString();
+    set((state) => ({ toasts: [...state.toasts, { id, text, type }] }));
+    setTimeout(() => get().removeToast(id), 4000);
+  },
+
+  removeToast: (id) => {
+    set((state) => ({ toasts: state.toasts.filter((t) => t.id !== id) }));
+  },
+
+  // === USERS (Знакомства) ===
+  fetchUsers: async (reset = false, category = '') => {
+    const { usersOffset } = get();
+    const offset = reset ? 0 : usersOffset;
+    const limit = 20;
+    const catQuery = category && category !== 'all' ? `&category=${category}` : '';
+
+    try {
+      const res = await api.get(`/users?limit=${limit}&offset=${offset}${catQuery}`);
+      const newUsers = res.data.users;
+      const total = res.data.total;
+
+      set((state) => ({
+        users: reset ? newUsers : [...state.users, ...newUsers],
+        usersTotal: total,
+        usersOffset: offset + newUsers.length,
+      }));
+    } catch (e) {
+      console.error('❌ [fetchUsers] error:', e);
+    }
   },
 
   // === CHAT ===

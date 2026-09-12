@@ -13,6 +13,7 @@ import { SettingsPage } from './pages/SettingsPage';
 import { Sidebar } from './components/Sidebar';
 import { Header } from './components/Header';
 import { UserProfileModal } from './components/UserProfileModal';
+import { Toasts } from './components/Toasts';
 import { User } from './types';
 
 function App() {
@@ -53,7 +54,7 @@ function App() {
             {activeTab === 'Главная' && <HomePage />}
             {activeTab === 'Заметки' && <NotesPage />}
             {activeTab === 'Чаты' && <ChatPage />}
-            {activeTab === 'Знакомства' && <MatchesPage />}
+            {activeTab === 'Знакомства' && <MatchesPage setActiveTab={setActiveTab} />}
             {activeTab === 'Работы' && <JobsPage />}
             {activeTab === 'Уведомления' && <NotificationsPage />}
             {activeTab === 'Профиль' && <ProfilePage />}

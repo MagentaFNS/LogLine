@@ -360,3 +360,53 @@ func GetUserByID(c *gin.Context) {
 		"created_at": user.CreatedAt,
 	})
 }
+
+// GetUsersList — список всех пользователей для страницы "Знакомства"
+// GET /api/users?role=frontend&limit=20&offset=0
+func GetUsersList(c *gin.Context) {
+	currentUserID := c.GetUint("userID")
+	category := c.Query("category")
+	limit := 20
+	offset := 0
+
+	if l, err := strconv.Atoi(c.Query("limit")); err == nil && l > 0 && l <= 100 {
+		limit = l
+	}
+	if o, err := strconv.Atoi(c.Query("offset")); err == nil && o >= 0 {
+		offset = o
+	}
+
+	query := database.DB.Model(&models.User{}).
+		Where("id != ?", currentUserID)
+
+	if category != "" && category != "all" {
+		query = query.Where("category = ?", category)
+	}
+
+	var users []models.User
+	query.Order("created_at DESC").
+		Limit(limit).
+		Offset(offset).
+		Find(&users)
+
+	var total int64
+	query.Count(&total)
+
+	result := []gin.H{}
+	for _, u := range users {
+		result = append(result, gin.H{
+			"id":        u.ID,
+			"username":  u.Username,
+			"avatar":    u.Avatar,
+			"bio":       u.Bio,
+			"role":      u.Role,
+			"category":  u.Category,
+			"last_seen": u.LastSeen,
+		})
+	}
+
+	c.JSON(200, gin.H{
+		"users": result,
+		"total": total,
+	})
+}

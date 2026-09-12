@@ -33,6 +33,7 @@ func SetupRouter(hub *ws.Hub) *gin.Engine {
 		protected.Use(middleware.AuthMiddleware())
 		{
 			protected.GET("/me", controllers.GetCurrentUser)
+			protected.GET("/profile/stats", controllers.GetProfileStats)
 			protected.POST("/update-profile", controllers.UpdateProfile)
 			protected.POST("/upload/avatar", controllers.UploadAvatar)
 			protected.POST("/upload/post-image", controllers.UploadPostImage)
@@ -41,6 +42,7 @@ func SetupRouter(hub *ws.Hub) *gin.Engine {
 			protected.GET("/chats", controllers.GetChats)
 			protected.GET("/chats/:id/messages", controllers.GetMessages)
 
+			protected.GET("/users", controllers.GetUsersList)
 			protected.GET("/users/search", controllers.SearchUsers)
 			protected.GET("/users/:id", controllers.GetUserByID)
 

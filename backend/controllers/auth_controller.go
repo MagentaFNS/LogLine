@@ -83,14 +83,23 @@ func UpdateProfile(c *gin.Context) {
 	var input struct {
 		Username string `json:"username"`
 		Bio      string `json:"bio"`
+		Category string `json:"category"`
 	}
 	c.ShouldBindJSON(&input)
 
 	var user models.User
 	database.DB.First(&user, userID)
-	user.Username = input.Username
-	user.Bio = input.Bio
-	database.DB.Save(&user)
 
+	if input.Username != "" {
+		user.Username = input.Username
+	}
+	if input.Bio != "" {
+		user.Bio = input.Bio
+	}
+	if input.Category != "" {
+		user.Category = input.Category
+	}
+
+	database.DB.Save(&user)
 	c.JSON(200, user)
 }

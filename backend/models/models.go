@@ -7,6 +7,7 @@ type User struct {
 	Username  string    `json:"username" gorm:"uniqueIndex"`
 	Password  string    `json:"-"`
 	Role      string    `json:"role"`
+	Category  string    `json:"category"`
 	Avatar    string    `json:"avatar" gorm:"default:'https://i.pravatar.cc/150'"`
 	Bio       string    `json:"bio"`
 	LastSeen  time.Time `json:"last_seen"`

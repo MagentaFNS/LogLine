@@ -1,21 +1,14 @@
-// clients/mobile/src/config.ts
-// ✅ ВСЁ БЕРЁТСЯ ИЗ .env — НИКАКОГО ХАРДКОДА
-
 export const API_URL =
-  process.env.EXPO_PUBLIC_API_URL || 'http://localhost:8080/api';
+  process.env.EXPO_PUBLIC_API_URL || 'http://192.168.0.102:8080/api';
 
 export const SOCKET_URL =
-  process.env.EXPO_PUBLIC_SOCKET_URL || 'http://localhost:8080';
+  process.env.EXPO_PUBLIC_SOCKET_URL || 'http://192.168.0.102:8080';
 
-// BACKEND_URL вычисляется из API_URL (отрезаем /api)
 export const BACKEND_URL = API_URL.replace(/\/api\/?$/, '');
 
-// Универсальный сборщик URL для аватарок
 export const getAvatarUrl = (raw?: string): string | undefined => {
   if (!raw || raw.trim() === '') return undefined;
-  // Если уже полный URL — вернём как есть
   if (raw.startsWith('http://') || raw.startsWith('https://')) return raw;
-  // Иначе — соберём из BACKEND_URL
   return `${BACKEND_URL}/uploads/${raw}`;
 };
 

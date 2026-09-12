@@ -1,36 +1,57 @@
-import { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, Image } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import { useEffect, useState } from 'react';
+import {
+  View, Text, ScrollView, StyleSheet, TouchableOpacity,
+  ActivityIndicator, Alert, Animated,
+} from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import {
-  Settings, LogOut, Bell, Shield, ChevronRight, Camera, Heart, Bookmark,
+  Settings, LogOut, Bell, Shield, ChevronRight,
+  Heart, Bookmark, Camera, Users, FileText, MessageSquare,
 } from 'lucide-react-native';
-import { COLORS, RADIUS, SPACING, getAvatarUrl } from '../config';
+import { api } from '../api';
 import { useStore } from '../store/useStore';
-import { AnimatedPressable } from '../components/AnimatedPressable';
+import { Avatar } from '../components/Avatar';
+import { CATEGORIES } from '../constants';
+import { useFadeIn } from '../hooks/useFadeIn';
+import { SettingsScreen } from './SettingsScreen';
+import { FavoritesScreen } from './FavoritesScreen';
+import { PrivacyScreen } from './PrivacyScreen';
 
-const MenuItem = ({ icon, label, onPress, danger, badge }: any) => (
-  <AnimatedPressable onPress={onPress} style={styles.menuItem}>
-    <View style={styles.menuLeft}>
-      <View style={[styles.menuIcon, danger && { backgroundColor: '#FFEBE9' }]}>{icon}</View>
-      <Text style={[styles.menuLabel, danger && { color: COLORS.danger }]}>{label}</Text>
-    </View>
-    <View style={styles.menuRight}>
-      {badge && <View style={styles.badge}><Text style={styles.badgeText}>{badge}</Text></View>}
-      <ChevronRight size={18} color={COLORS.gray400} strokeWidth={2} />
-    </View>
-  </AnimatedPressable>
-);
+interface Stats {
+  notes: number;
+  posts: number;
+  chats: number;
+  messages: number;
+}
 
 export const ProfileScreen = () => {
-  const { currentUser, logout, updateAvatar } = useStore();
-  const navigation = useNavigation<any>();
+  const { currentUser, updateAvatar, logout, unreadChats, addToast } = useStore();
+  const [stats, setStats] = useState<Stats>({ notes: 0, posts: 0, chats: 0, messages: 0 });
+  const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
+  const [screen, setScreen] = useState<'main' | 'settings' | 'favorites' | 'saved' | 'privacy'>('main');
+  const fadeAnim = useFadeIn();
+
+  useEffect(() => {
+    fetchStats();
+  }, []);
+
+  const fetchStats = async () => {
+    try {
+      const res = await api.get('/profile/stats');
+      console.log('📊 [stats]:', res.data);
+      setStats(res.data);
+    } catch (e) {
+      console.log('❌ stats:', e);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const pickAndUpload = async () => {
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!permission.granted) {
-      Alert.alert('Разрешение', 'Нужно разрешение на доступ к галерее');
+      Alert.alert('Разрешение', 'Нужно разрешение на галерею');
       return;
     }
 
@@ -39,8 +60,6 @@ export const ProfileScreen = () => {
       allowsEditing: true,
       aspect: [1, 1],
       quality: 0.8,
-      base64: false,
-      exif: false,
     });
 
     if (result.canceled || !result.assets[0]) return;
@@ -51,137 +70,235 @@ export const ProfileScreen = () => {
       const formData = new FormData();
       formData.append('avatar', {
         uri: asset.uri,
-        type: asset.mimeType || 'image/jpeg',
-        name: asset.fileName || 'avatar.jpg',
+        type: 'image/jpeg',
+        name: 'avatar.jpg',
       } as any);
 
       await updateAvatar(formData);
-      Alert.alert('Готово', 'Аватар обновлён');
+      addToast('Аватар обновлён', 'success');
     } catch (e) {
-      console.log(e);
-      Alert.alert('Ошибка', 'Не удалось загрузить фото');
+      addToast('Ошибка загрузки', 'error');
     } finally {
       setUploading(false);
     }
   };
 
+  const handleOpenScreen = (s: 'settings' | 'favorites' | 'saved' | 'privacy') => {
+    setScreen(s);
+  };
+
   const handleLogout = () => {
-    Alert.alert('Выход', 'Уверен, что хочешь выйти?', [
+    Alert.alert('Выход', 'Выйти из аккаунта?', [
       { text: 'Отмена', style: 'cancel' },
       { text: 'Выйти', style: 'destructive', onPress: logout },
     ]);
   };
 
-  const firstLetter = currentUser?.username?.[0]?.toUpperCase() || '?';
-  const avatarUrl = getAvatarUrl(currentUser?.avatar);
+  const categoryLabel = CATEGORIES.find((c) => c.id === currentUser?.category)?.label;
+
+  const MenuItem = ({ icon, label, onPress, badge }: any) => (
+    <TouchableOpacity style={styles.menuItem} onPress={onPress} activeOpacity={0.7}>
+      <View style={styles.menuLeft}>
+        <View style={styles.menuIcon}>{icon}</View>
+        <Text style={styles.menuLabel}>{label}</Text>
+      </View>
+      <View style={styles.menuRight}>
+        {badge > 0 && (
+          <View style={styles.badge}>
+            <Text style={styles.badgeText}>{badge > 9 ? '9+' : badge}</Text>
+          </View>
+        )}
+        <ChevronRight size={18} color="#999" />
+      </View>
+    </TouchableOpacity>
+  );
+
+  // Навигация
+  if (screen === 'settings') return <SettingsScreen onBack={() => setScreen('main')} />;
+  if (screen === 'favorites') return <FavoritesScreen mode="favorites" onBack={() => setScreen('main')} />;
+  if (screen === 'saved') return <FavoritesScreen mode="saved" onBack={() => setScreen('main')} />;
+  if (screen === 'privacy') return <PrivacyScreen onBack={() => setScreen('main')} />;
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: 140 }} showsVerticalScrollIndicator={false}>
+    <Animated.ScrollView
+      style={[styles.container, { opacity: fadeAnim }]}
+      contentContainerStyle={{ paddingBottom: 140 }}
+    >
+      {/* Header */}
       <View style={styles.header}>
         <Text style={styles.title}>Профиль</Text>
-        <TouchableOpacity>
-          <Settings size={24} color={COLORS.black} strokeWidth={2} />
+        <TouchableOpacity onPress={() => handleOpenScreen('settings')}>
+          <Settings size={24} color="#000" strokeWidth={2} />
         </TouchableOpacity>
       </View>
 
-      <View style={styles.profileCard}>
+      {/* Card */}
+      <View style={styles.card}>
         <View style={styles.avatarWrap}>
-          {avatarUrl ? (
-            <Image source={{ uri: avatarUrl }} style={styles.avatarImg} />
-          ) : (
-            <Text style={styles.avatarText}>{firstLetter}</Text>
-          )}
-
-          <TouchableOpacity style={styles.cameraBtn} onPress={pickAndUpload} disabled={uploading}>
-            <Camera size={16} color={COLORS.white} strokeWidth={2.5} />
+          <View style={styles.avatarCircle}>
+            <Avatar
+              uri={currentUser?.avatar}
+              username={currentUser?.username}
+              size={120}
+            />
+          </View>
+          <TouchableOpacity
+            style={styles.cameraBtn}
+            onPress={pickAndUpload}
+            disabled={uploading}
+          >
+            {uploading ? (
+              <ActivityIndicator size="small" color="#fff" />
+            ) : (
+              <Camera size={16} color="#fff" strokeWidth={2.5} />
+            )}
           </TouchableOpacity>
         </View>
         <Text style={styles.name}>{currentUser?.username}</Text>
         <Text style={styles.handle}>@{currentUser?.username?.toLowerCase()}</Text>
-        <View style={styles.badgePill}>
-          <Text style={styles.badgePillText}>
-            {currentUser?.role === 'admin' ? 'Администратор' : 'Пользователь'}
-          </Text>
-        </View>
-      </View>
-
-      <View style={styles.statsRow}>
-        {[
-          { n: '32', l: 'Заметок' },
-          { n: '128', l: 'Подписчиков' },
-          { n: '86', l: 'Подписки' },
-        ].map((s) => (
-          <View key={s.l} style={styles.statBox}>
-            <Text style={styles.statNumber}>{s.n}</Text>
-            <Text style={styles.statLabel}>{s.l}</Text>
+        {categoryLabel && (
+          <View style={styles.categoryPill}>
+            <Text style={styles.categoryText}>{categoryLabel}</Text>
           </View>
-        ))}
+        )}
       </View>
 
+      {/* Stats */}
+      {loading ? (
+        <ActivityIndicator style={{ marginVertical: 20 }} color="#000" />
+      ) : (
+        <View style={styles.statsRow}>
+          <View style={styles.statBox}>
+            <FileText size={18} color="#666" style={{ marginBottom: 4 }} />
+            <Text style={styles.statNumber}>{stats.notes}</Text>
+            <Text style={styles.statLabel}>Заметок</Text>
+          </View>
+          <View style={styles.statBox}>
+            <Users size={18} color="#666" style={{ marginBottom: 4 }} />
+            <Text style={styles.statNumber}>{stats.chats}</Text>
+            <Text style={styles.statLabel}>Друзей</Text>
+          </View>
+          <View style={styles.statBox}>
+            <MessageSquare size={18} color="#666" style={{ marginBottom: 4 }} />
+            <Text style={styles.statNumber}>{stats.messages}</Text>
+            <Text style={styles.statLabel}>Сообщений</Text>
+          </View>
+        </View>
+      )}
+
+      {/* Menu */}
       <View style={styles.menuCard}>
-        <MenuItem icon={<Bell size={18} color={COLORS.black} strokeWidth={2} />} label="Уведомления" badge="3" onPress={() => navigation.navigate('Уведомления')} />
+        <MenuItem
+          icon={<Bell size={18} color="#111" strokeWidth={2} />}
+          label="Уведомления"
+          badge={unreadChats}
+          onPress={() => addToast('Уведомления — на вкладке снизу', 'info')}
+        />
         <View style={styles.separator} />
-        <MenuItem icon={<Heart size={18} color={COLORS.black} strokeWidth={2} />} label="Избранное" onPress={() => {}} />
+        <MenuItem
+          icon={<Heart size={18} color="#111" strokeWidth={2} />}
+          label="Избранное"
+          onPress={() => handleOpenScreen('favorites')}
+        />
         <View style={styles.separator} />
-        <MenuItem icon={<Bookmark size={18} color={COLORS.black} strokeWidth={2} />} label="Сохранённое" onPress={() => {}} />
+        <MenuItem
+          icon={<Bookmark size={18} color="#111" strokeWidth={2} />}
+          label="Сохранённое"
+          onPress={() => handleOpenScreen('saved')}
+        />
         <View style={styles.separator} />
-        <MenuItem icon={<Shield size={18} color={COLORS.black} strokeWidth={2} />} label="Приватность" onPress={() => {}} />
+        <MenuItem
+          icon={<Shield size={18} color="#111" strokeWidth={2} />}
+          label="Приватность"
+          onPress={() => handleOpenScreen('privacy')}
+        />
+        <View style={styles.separator} />
+        <MenuItem
+          icon={<Settings size={18} color="#111" strokeWidth={2} />}
+          label="Настройки"
+          onPress={() => handleOpenScreen('settings')}
+        />
       </View>
 
+      {/* Logout */}
       <View style={styles.menuCard}>
-        <MenuItem icon={<LogOut size={18} color={COLORS.danger} strokeWidth={2} />} label="Выйти из аккаунта" onPress={handleLogout} danger />
+        <TouchableOpacity style={styles.menuItem} onPress={handleLogout} activeOpacity={0.7}>
+          <View style={styles.menuLeft}>
+            <View style={styles.menuIcon}>
+              <LogOut size={18} color="#111" strokeWidth={2} />
+            </View>
+            <Text style={styles.menuLabel}>Выйти из аккаунта</Text>
+          </View>
+          <ChevronRight size={18} color="#999" />
+        </TouchableOpacity>
       </View>
 
       <Text style={styles.version}>LogLine v1.0.0</Text>
-    </ScrollView>
+    </Animated.ScrollView>
   );
 };
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: COLORS.offWhite },
+  container: { flex: 1, backgroundColor: '#f5f5f7' },
   header: {
     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
-    paddingHorizontal: SPACING.xl, paddingTop: 64, paddingBottom: SPACING.lg,
+    paddingHorizontal: 20, paddingTop: 64, paddingBottom: 16,
   },
-  title: { fontSize: 30, fontWeight: '800', color: COLORS.black, letterSpacing: -1 },
-  profileCard: {
-    marginHorizontal: SPACING.lg, backgroundColor: COLORS.white,
-    borderRadius: RADIUS.xxl, padding: SPACING.xxl, alignItems: 'center',
-    marginBottom: SPACING.lg,
+  title: { fontSize: 32, fontWeight: '800', color: '#000', letterSpacing: -1 },
+  card: {
+    backgroundColor: '#fff', borderRadius: 24,
+    paddingVertical: 32, paddingHorizontal: 24,
+    alignItems: 'center', marginHorizontal: 16, marginBottom: 16,
   },
-  avatarWrap: {
-    width: 110, height: 110, borderRadius: 55,
-    backgroundColor: COLORS.black, justifyContent: 'center', alignItems: 'center',
-    marginBottom: SPACING.lg, overflow: 'hidden',
+  avatarWrap: { position: 'relative', marginBottom: 16 },
+  avatarCircle: {
+    width: 120, height: 120, borderRadius: 60,
+    overflow: 'hidden',
+    borderWidth: 4, borderColor: '#fff',
+    backgroundColor: '#000',
   },
-  avatarImg: { width: '100%', height: '100%' },
-  avatarText: { color: COLORS.white, fontSize: 44, fontWeight: '800' },
   cameraBtn: {
-    position: 'absolute', bottom: 4, right: 4,
-    width: 32, height: 32, borderRadius: 16,
-    backgroundColor: COLORS.black,
+    position: 'absolute', bottom: 0, right: 0,
+    width: 36, height: 36, borderRadius: 18,
+    backgroundColor: '#000',
     justifyContent: 'center', alignItems: 'center',
-    borderWidth: 3, borderColor: COLORS.white,
+    borderWidth: 3, borderColor: '#fff',
   },
-  name: { fontSize: 24, fontWeight: '800', color: COLORS.black, letterSpacing: -0.5 },
-  handle: { fontSize: 14, color: COLORS.gray400, marginTop: 4 },
-  badgePill: {
-    marginTop: SPACING.md, backgroundColor: COLORS.gray100,
-    paddingHorizontal: SPACING.md, paddingVertical: 6, borderRadius: RADIUS.full,
+  name: { fontSize: 24, fontWeight: '800', color: '#000', letterSpacing: -0.5 },
+  handle: { fontSize: 14, color: '#999', marginTop: 4 },
+  categoryPill: {
+    marginTop: 12, paddingHorizontal: 14, paddingVertical: 6,
+    backgroundColor: '#f2f2f7', borderRadius: 999,
   },
-  badgePillText: { fontSize: 12, color: COLORS.gray600, fontWeight: '700' },
-  statsRow: { flexDirection: 'row', gap: SPACING.sm, marginHorizontal: SPACING.lg, marginBottom: SPACING.lg },
-  statBox: { flex: 1, backgroundColor: COLORS.white, padding: SPACING.lg, borderRadius: RADIUS.lg, alignItems: 'center' },
-  statNumber: { fontSize: 22, fontWeight: '800', color: COLORS.black },
-  statLabel: { fontSize: 12, color: COLORS.gray400, marginTop: 4 },
-  menuCard: { marginHorizontal: SPACING.lg, marginBottom: SPACING.lg, backgroundColor: COLORS.white, borderRadius: RADIUS.xl, overflow: 'hidden' },
-  menuItem: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: SPACING.lg },
-  menuLeft: { flexDirection: 'row', alignItems: 'center', gap: SPACING.md },
-  menuRight: { flexDirection: 'row', alignItems: 'center', gap: SPACING.sm },
-  menuIcon: { width: 36, height: 36, borderRadius: 10, backgroundColor: COLORS.gray100, justifyContent: 'center', alignItems: 'center' },
-  menuLabel: { fontSize: 15, fontWeight: '600', color: COLORS.black },
-  separator: { height: 1, backgroundColor: COLORS.gray100, marginLeft: 64 },
-  badge: { backgroundColor: COLORS.danger, paddingHorizontal: 7, paddingVertical: 2, borderRadius: 10, minWidth: 20, alignItems: 'center' },
-  badgeText: { color: COLORS.white, fontSize: 11, fontWeight: '700' },
-  version: { textAlign: 'center', color: COLORS.gray400, fontSize: 12, marginTop: SPACING.xl },
+  categoryText: { fontSize: 12, fontWeight: '700', color: '#666' },
+  statsRow: { flexDirection: 'row', gap: 8, marginHorizontal: 16, marginBottom: 16 },
+  statBox: {
+    flex: 1, backgroundColor: '#fff', padding: 16,
+    borderRadius: 16, alignItems: 'center',
+  },
+  statNumber: { fontSize: 20, fontWeight: '800', color: '#000' },
+  statLabel: { fontSize: 11, color: '#999', marginTop: 2 },
+  menuCard: {
+    marginHorizontal: 16, marginBottom: 12,
+    backgroundColor: '#fff', borderRadius: 20, overflow: 'hidden',
+  },
+  menuItem: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    padding: 16,
+  },
+  menuLeft: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  menuRight: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  menuIcon: {
+    width: 36, height: 36, borderRadius: 10,
+    backgroundColor: '#f2f2f7',
+    justifyContent: 'center', alignItems: 'center',
+  },
+  menuLabel: { fontSize: 15, fontWeight: '600', color: '#111' },
+  separator: { height: 1, backgroundColor: '#f2f2f7', marginLeft: 64 },
+  badge: {
+    backgroundColor: '#FF3B30', paddingHorizontal: 7, paddingVertical: 2,
+    borderRadius: 10, minWidth: 20, alignItems: 'center',
+  },
+  badgeText: { color: '#fff', fontSize: 11, fontWeight: '700' },
+  version: { textAlign: 'center', color: '#999', fontSize: 12, marginTop: 24, marginBottom: 20 },
 });

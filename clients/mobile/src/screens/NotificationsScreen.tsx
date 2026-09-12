@@ -1,49 +1,85 @@
-import { View, Text, FlatList, StyleSheet } from 'react-native';
-import { Heart, MessageCircle, UserPlus, Bell } from 'lucide-react-native';
+import { useEffect, useState } from 'react';
+import {
+  View, Text, FlatList, StyleSheet, ActivityIndicator, Animated,
+} from 'react-native';
+import { Bell } from 'lucide-react-native';
+import { api } from '../api';
 import { COLORS, RADIUS, SPACING } from '../config';
+import { useFadeIn } from '../hooks/useFadeIn';
 
-const MOCK_NOTIFICATIONS = [
-  { id: 1, type: 'like', title: 'Мария Иванова', text: 'оценила твой пост', time: '5 мин', icon: Heart, color: '#FF3B30' },
-  { id: 2, type: 'comment', title: 'Дмитрий Смирнов', text: 'прокомментировал заметку', time: '15 мин', icon: MessageCircle, color: '#0A84FF' },
-  { id: 3, type: 'follow', title: 'Ольга Петрова', text: 'подписалась на тебя', time: '1 ч', icon: UserPlus, color: '#34C759' },
-  { id: 4, type: 'system', title: 'LogLine', text: 'Добро пожаловать в приложение!', time: '2 ч', icon: Bell, color: '#000000' },
-];
+interface Notification {
+  id: number;
+  text: string;
+  is_read: boolean;
+  created_at: string;
+}
 
 export const NotificationsScreen = () => {
+  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [loading, setLoading] = useState(true);
+  const fadeAnim = useFadeIn();
+
+  const fetchNotifications = async () => {
+    try {
+      const res = await api.get('/notifications');
+      setNotifications(res.data);
+    } catch (e) {
+      console.log('❌ notifications:', e);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchNotifications();
+    const interval = setInterval(fetchNotifications, 5000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const formatTime = (iso: string) => {
+    const d = new Date(iso);
+    const diff = Date.now() - d.getTime();
+    const mins = Math.floor(diff / 60000);
+    if (mins < 1) return 'сейчас';
+    if (mins < 60) return `${mins} мин`;
+    if (mins < 1440) return `${Math.floor(mins / 60)} ч`;
+    return `${Math.floor(mins / 1440)} дн`;
+  };
+
   return (
-    <View style={styles.container}>
+    <Animated.View style={[styles.container, { opacity: fadeAnim }]}>
       <View style={styles.header}>
         <Text style={styles.title}>Уведомления</Text>
       </View>
 
-      <FlatList
-        data={MOCK_NOTIFICATIONS}
-        keyExtractor={(item) => String(item.id)}
-        contentContainerStyle={{ paddingBottom: 140 }}
-        renderItem={({ item }) => {
-          const Icon = item.icon;
-          return (
+      {loading ? (
+        <ActivityIndicator size="large" color="#000" style={{ marginTop: 100 }} />
+      ) : (
+        <FlatList
+          data={notifications}
+          keyExtractor={(item) => String(item.id)}
+          contentContainerStyle={{ paddingBottom: 140 }}
+          renderItem={({ item }) => (
             <View style={styles.notifCard}>
-              <View style={[styles.iconWrap, { backgroundColor: item.color + '15' }]}>
-                <Icon size={20} color={item.color} strokeWidth={2.2} />
+              <View style={styles.iconWrap}>
+                <Bell size={20} color="#000" strokeWidth={2.2} />
               </View>
               <View style={{ flex: 1 }}>
-                <Text style={styles.notifTitle}>{item.title}</Text>
                 <Text style={styles.notifText}>{item.text}</Text>
               </View>
-              <Text style={styles.notifTime}>{item.time}</Text>
+              <Text style={styles.notifTime}>{formatTime(item.created_at)}</Text>
             </View>
-          );
-        }}
-        ListEmptyComponent={
-          <View style={styles.emptyBox}>
-            <Bell size={48} color={COLORS.gray300} strokeWidth={1.5} />
-            <Text style={styles.emptyTitle}>Пока тихо</Text>
-            <Text style={styles.emptyText}>Здесь появятся уведомления</Text>
-          </View>
-        }
-      />
-    </View>
+          )}
+          ListEmptyComponent={
+            <View style={styles.emptyBox}>
+              <Bell size={48} color={COLORS.gray300} strokeWidth={1.5} />
+              <Text style={styles.emptyTitle}>Пока тихо</Text>
+              <Text style={styles.emptyText}>Здесь появятся уведомления</Text>
+            </View>
+          }
+        />
+      )}
+    </Animated.View>
   );
 };
 
@@ -59,10 +95,10 @@ const styles = StyleSheet.create({
   },
   iconWrap: {
     width: 44, height: 44, borderRadius: 22,
+    backgroundColor: '#F2F2F7',
     justifyContent: 'center', alignItems: 'center',
   },
-  notifTitle: { fontSize: 15, fontWeight: '700', color: COLORS.black },
-  notifText: { fontSize: 13, color: COLORS.gray500, marginTop: 2 },
+  notifText: { fontSize: 14, color: COLORS.gray800 },
   notifTime: { fontSize: 12, color: COLORS.gray400 },
   emptyBox: { alignItems: 'center', marginTop: 100 },
   emptyTitle: { fontSize: 20, fontWeight: '700', color: COLORS.gray800, marginTop: SPACING.lg },

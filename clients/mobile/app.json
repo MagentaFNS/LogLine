@@ -5,21 +5,22 @@
     "version": "1.0.0",
     "orientation": "portrait",
     "userInterfaceStyle": "light",
-    "splash": {
-      "backgroundColor": "#FFFFFF",
-      "resizeMode": "contain"
-    },
     "assetBundlePatterns": ["**/*"],
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.magenta.logline"
     },
     "android": {
+      "package": "com.magenta.logline",
       "adaptiveIcon": {
         "backgroundColor": "#000000"
       }
     },
     "web": {
       "favicon": "./public/favicon.png"
-    }
+    },
+    "plugins": [
+      "expo-image-picker"
+    ]
   }
 }

@@ -10,7 +10,21 @@ interface Props {
 export const Avatar = ({ uri, username, size = 44 }: Props) => {
   const firstLetter = username?.[0]?.toUpperCase() || '?';
   const fullUrl = getAvatarUrl(uri);
-  const hasImage = !!fullUrl;
+
+  if (fullUrl) {
+    return (
+      <Image
+        source={{ uri: fullUrl }}
+        style={{
+          width: size,
+          height: size,
+          borderRadius: size / 2,
+          backgroundColor: '#000',
+        }}
+        resizeMode="cover"
+      />
+    );
+  }
 
   return (
     <View
@@ -19,17 +33,9 @@ export const Avatar = ({ uri, username, size = 44 }: Props) => {
         { width: size, height: size, borderRadius: size / 2 },
       ]}
     >
-      {hasImage ? (
-        <Image
-          source={{ uri: fullUrl }}
-          style={{ width: size, height: size, borderRadius: size / 2 }}
-          resizeMode="cover"
-        />
-      ) : (
-        <Text style={[styles.letter, { fontSize: size * 0.4 }]}>
-          {firstLetter}
-        </Text>
-      )}
+      <Text style={[styles.letter, { fontSize: size * 0.4 }]}>
+        {firstLetter}
+      </Text>
     </View>
   );
 };
@@ -39,7 +45,6 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.black,
     justifyContent: 'center',
     alignItems: 'center',
-    overflow: 'hidden',
   },
   letter: {
     color: COLORS.white,

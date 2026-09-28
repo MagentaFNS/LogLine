@@ -33,6 +33,7 @@
     "@babel/core": "^7.25.0",
     "@types/react": "~19.2.4",
     "@types/ws": "^8.18.1",
+    "eas-cli": "^24.7.0",
     "typescript": "~6.0.3"
   },
   "private": true
